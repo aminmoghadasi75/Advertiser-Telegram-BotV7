@@ -1399,6 +1399,7 @@ export default function App() {
                   onJoinSingleGroup={handleJoinSingleGroup}
                   onUpdateJoinStrategy={handleUpdateJoinStrategy}
                   onAuditAndPurgeNonPersian={handleAuditAndPurgeNonPersian}
+                  onRefreshState={fetchState}
                 />
               </div>
             )}
@@ -1467,6 +1468,7 @@ export default function App() {
                     onJoinSingleGroup={handleJoinSingleGroup}
                     onUpdateJoinStrategy={handleUpdateJoinStrategy}
                     onAuditAndPurgeNonPersian={handleAuditAndPurgeNonPersian}
+                    onRefreshState={fetchState}
                   />
 
                   <SchedulerCard

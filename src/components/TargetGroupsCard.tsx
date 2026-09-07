@@ -76,6 +76,7 @@ interface TargetGroupsCardProps {
   onJoinSingleGroup?: (groupId: string, accountId?: string) => Promise<void>;
   onUpdateJoinStrategy?: (strategy: GroupJoinStrategy) => Promise<void>;
   onAuditAndPurgeNonPersian?: (options?: { deleteFromDatabase?: boolean; scanDialogs?: boolean }) => Promise<any>;
+  onRefreshState?: () => Promise<void>;
 }
 
 export const TargetGroupsCard: React.FC<TargetGroupsCardProps> = ({
@@ -98,6 +99,7 @@ export const TargetGroupsCard: React.FC<TargetGroupsCardProps> = ({
   onJoinSingleGroup,
   onUpdateJoinStrategy,
   onAuditAndPurgeNonPersian,
+  onRefreshState,
 }) => {
   // Navigation: Phase 1 (Territory Sharding & Safe Drip Join) vs Phase 2 (Smart Join Engine) vs Phase 3 (Group List & Ad Broadcast)
   const [activeTab, setActiveTab] = useState<'territory_hub' | 'join_hub' | 'groups_list'>('territory_hub');
@@ -170,7 +172,8 @@ export const TargetGroupsCard: React.FC<TargetGroupsCardProps> = ({
     try {
       if (deleteFromApp) {
         await onDeleteGroup(group.id);
-        if (onSyncGroups) await onSyncGroups();
+        if (onRefreshState) await onRefreshState();
+        else await fetchTerritoryAudit();
         showNotification('success', `🗑️ گروه "${group.title}" با موفقیت حذف گردید و از تلگرام نیز لفت داده و محو شد.`);
       } else {
         const res = await fetch('/api/groups/leave-telegram', {
@@ -180,7 +183,8 @@ export const TargetGroupsCard: React.FC<TargetGroupsCardProps> = ({
         });
         const data = await res.json();
         if (res.ok && data.success) {
-          if (onSyncGroups) await onSyncGroups();
+          if (onRefreshState) await onRefreshState();
+          else await fetchTerritoryAudit();
           showNotification('success', `✅ ${data.message || 'گروه با موفقیت از محیط تلگرام لفت داده شد و چت آن پاک گردید.'}`);
         } else {
           showNotification('error', `خطا: ${data.error || 'عملیات ناموفق بود'}`);
@@ -203,7 +207,8 @@ export const TargetGroupsCard: React.FC<TargetGroupsCardProps> = ({
       if (deleteFromApp && onDeleteBulkGroupsByIds) {
         await (onDeleteBulkGroupsByIds as any)(selectedTargetGroupIds);
         setSelectedTargetGroupIds([]);
-        if (onSyncGroups) await onSyncGroups();
+        if (onRefreshState) await onRefreshState();
+        else await fetchTerritoryAudit();
         showNotification('success', `🗑️ تعداد ${count} گروه با موفقیت حذف شده و از محیط تلگرام نیز محو گردیدند.`);
       } else {
         const res = await fetch('/api/groups/leave-bulk-telegram', {
@@ -214,7 +219,8 @@ export const TargetGroupsCard: React.FC<TargetGroupsCardProps> = ({
         const data = await res.json();
         if (res.ok && data.success) {
           setSelectedTargetGroupIds([]);
-          if (onSyncGroups) await onSyncGroups();
+          if (onRefreshState) await onRefreshState();
+          else await fetchTerritoryAudit();
           showNotification('success', `✅ ${data.message || `تعداد ${data.successCount} گروه با موفقیت از محیط تلگرام پاکسازی شدند.`}`);
         } else {
           showNotification('error', `خطا: ${data.error || 'عملیات ناموفق بود'}`);
@@ -363,7 +369,8 @@ export const TargetGroupsCard: React.FC<TargetGroupsCardProps> = ({
       });
       const data = await res.json();
       if (data.report) setTerritoryReport(data.report);
-      if (onSyncGroups) await onSyncGroups();
+      if (onRefreshState) await onRefreshState();
+      else await fetchTerritoryAudit();
       showNotification('success', data.message || 'اکانت با موفقیت از گروه تکراری خارج شد.');
     } catch (err: any) {
       showNotification('error', 'خطا در خروج از گروه تکراری: ' + (err.message || err));
@@ -388,7 +395,8 @@ export const TargetGroupsCard: React.FC<TargetGroupsCardProps> = ({
         throw new Error(data.error || 'خطا در رفع تداخل‌ها');
       }
       if (data.report) setTerritoryReport(data.report);
-      if (onSyncGroups) await onSyncGroups();
+      if (onRefreshState) await onRefreshState();
+      else await fetchTerritoryAudit();
       setBalanceResultBanner(data.message || 'تمام تداخل‌ها با موفقیت رفع و بار اکانت‌ها متوازن گردید.');
       showNotification('success', `✅ ${data.message || 'تمام تداخل‌ها با موفقیت رفع شد.'}`);
     } catch (err: any) {

@@ -4802,7 +4802,7 @@ async function getEntityForLeave(client: any, target: TargetGroup | string): Pro
 
   // 3. Search client's dialogs (handles all joined channels/groups by title, ID, username)
   try {
-    const dialogs = await client.getDialogs({ limit: 250 });
+    const dialogs = await client.getDialogs({ limit: 350 });
     const normalize = (s: string) =>
       s
         .replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '')
@@ -4827,7 +4827,7 @@ async function getEntityForLeave(client: any, target: TargetGroup | string): Pro
       if (
         normTargetTitle &&
         (entityTitle === normTargetTitle ||
-          (normTargetTitle.length >= 4 &&
+          (normTargetTitle.length >= 3 &&
             (entityTitle.includes(normTargetTitle) || normTargetTitle.includes(entityTitle))))
       ) {
         return entity;
@@ -7512,6 +7512,34 @@ async function executeBroadcast(isManualTrigger = false) {
       }
     }
 
+    // 4.3 24-Hour Memory / Daily Deduplication Check (استراتژی ۱ و محافظت از مصرف سهمیه اکانت‌ها)
+    // If a group was successfully advertised within the last 24 hours, skip it on subsequent "Start Broadcast" triggers
+    const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+    const nowMs = Date.now();
+    const alreadyPostedIn24h = targetGroupsToProcess.filter(g => {
+      if (!g.lastPostedAt) return false;
+      const lastPostTime = new Date(g.lastPostedAt).getTime();
+      return !isNaN(lastPostTime) && (nowMs - lastPostTime) < TWENTY_FOUR_HOURS_MS;
+    });
+
+    if (alreadyPostedIn24h.length > 0 && alreadyPostedIn24h.length < targetGroupsToProcess.length) {
+      targetGroupsToProcess = targetGroupsToProcess.filter(g => {
+        if (!g.lastPostedAt) return true;
+        const lastPostTime = new Date(g.lastPostedAt).getTime();
+        return isNaN(lastPostTime) || (nowMs - lastPostTime) >= TWENTY_FOUR_HOURS_MS;
+      });
+      addLog(
+        'info',
+        `🧠 [حافظه هوشمند ۲۴ ساعته] تعداد ${alreadyPostedIn24h.length} گروه به دلیل ارسال موفق در ۲۴ ساعت گذشته از صف ارسال کنار گذاشته شدند تا از ارسال تکراری جلوگیری شده و سهمیه اکانت‌ها هدر نرود.`
+      );
+    } else if (alreadyPostedIn24h.length === targetGroupsToProcess.length && targetGroupsToProcess.length > 0) {
+      addLog(
+        'warning',
+        `🧠 [حافظه هوشمند ۲۴ ساعته] تمامی ${targetGroupsToProcess.length} گروه فعال در ۲۴ ساعت گذشته تبلیغات دریافت کرده‌اند. جهت حفظ امنیت اکانت‌ها و رعایت بازه زمانی، ارسال مجدد انجام نشد.`
+      );
+      return { success: false, message: 'تمامی گروه‌های فعال در ۲۴ ساعت اخیر تبلیغ دریافت کرده‌اند.' };
+    }
+
     // Prepare media image paths for all active campaigns
     const campaignImagePaths = new Map<string, string>();
     for (const camp of activeCampaigns) {
@@ -8510,22 +8538,13 @@ app.post('/api/groups/resolve-all-overlaps-balanced', async (req, res) => {
 
     // Identify all overlapping groups
     const overlappingGroups = appState.groups.filter(
-      g => g.joinedAccountIds && g.joinedAccountIds.length > 1 && g.isActive && g.status !== 'purged_non_persian'
+      g =>
+        ((g.joinedAccountIds && g.joinedAccountIds.length > 1) ||
+          (g.duplicateAccountIds && g.duplicateAccountIds.length > 0) ||
+          g.hasOverlap) &&
+        g.isActive &&
+        g.status !== 'purged_non_persian'
     );
-
-    if (overlappingGroups.length === 0) {
-      const report = auditAndBalanceTerritories({ forceRebalanceUnassigned: true });
-      saveData();
-      res.json({
-        success: true,
-        message: 'هیچ گروه دارای تداخلی یافت نشد. تمام قلمروها از قبل تفکیک‌شده و بدون تداخل هستند.',
-        resolvedCount: 0,
-        totalLeaves: 0,
-        report,
-        groups: appState.groups,
-      });
-      return;
-    }
 
     // Step 1: Calculate current non-overlapping baseline load for each active account
     const accountLoads: Record<string, number> = {};
@@ -8534,6 +8553,7 @@ app.post('/api/groups/resolve-all-overlaps-balanced', async (req, res) => {
         g =>
           g.assignedAccountId === acc.id &&
           (!g.joinedAccountIds || g.joinedAccountIds.length <= 1) &&
+          !g.hasOverlap &&
           g.isActive &&
           g.status !== 'purged_non_persian'
       ).length;
@@ -8549,11 +8569,15 @@ app.post('/api/groups/resolve-all-overlaps-balanced', async (req, res) => {
 
     // Step 2: For each overlapping group, assign to the candidate with lowest current load, and make others leave Telegram
     for (const group of overlappingGroups) {
-      const joinedIds = [...group.joinedAccountIds!];
+      const joinedIds = Array.from(new Set([
+        ...(group.joinedAccountIds || []),
+        ...(group.duplicateAccountIds || []),
+        ...(group.assignedAccountId ? [group.assignedAccountId] : [])
+      ]));
 
       // Filter to joined accounts that are currently active
       const activeJoinedAccounts = availableAccounts.filter(a => joinedIds.includes(a.id));
-      const candidates = activeJoinedAccounts.length > 0 ? activeJoinedAccounts : availableAccounts;
+      const candidates = activeJoinedAccounts.length > 0 ? activeJoinedAccounts : [...availableAccounts];
 
       // Sort candidates by current load ascending (least loaded first to achieve perfect equality)
       candidates.sort((a, b) => (accountLoads[a.id] || 0) - (accountLoads[b.id] || 0));
@@ -8604,14 +8628,14 @@ app.post('/api/groups/resolve-all-overlaps-balanced', async (req, res) => {
       });
     }
 
-    // Step 3: Run final territory audit & save
+    // Step 3: Run final territory audit & save with balanced redistribution for unassigned
     const report = auditAndBalanceTerritories({ forceRebalanceUnassigned: true });
     saveData();
 
     // Build human-friendly distribution summary
     const loadDistributionStr = availableAccounts
       .map(acc => {
-        const count = appState.groups.filter(g => g.assignedAccountId === acc.id && g.isActive).length;
+        const count = appState.groups.filter(g => g.assignedAccountId === acc.id && g.isActive && g.status !== 'purged_non_persian').length;
         return `${acc.phoneNumber || acc.id}: ${count} گروه`;
       })
       .join(' • ');
