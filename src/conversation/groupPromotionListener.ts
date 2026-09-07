@@ -1,4 +1,19 @@
-import { ProductCampaign } from '../types.js';
+import {
+  ProductCampaign,
+  ConversationState,
+  Intent,
+  ConversationContext,
+  AnonymousChatMessage,
+  AnonymousProductPromotion,
+  BotPersonaConfig,
+} from '../types.js';
+import {
+  processConversationTurn,
+  createInitialConversationContext,
+  ConversationStepOutput,
+} from './conversationEngine.js';
+import { DEFAULT_NOVA_VPN_CONFIG, ProductConfig } from '../config/productConfig.js';
+import { validateAndSanitizeResponse } from './responseValidator.js';
 import { GoogleGenAI } from '@google/genai';
 import {
   getAdaptiveCandidateModels,
@@ -468,6 +483,286 @@ export function getSmartFallbackGroupConversationReply(userText: string, campaig
     return 'باشه هر جور راحتی عزیزم';
   }
   return `خواستی خودت تست کن به ${contact} بگو تست میده`;
+}
+
+// ----------------------------------------------------------------------------
+// GROUP CONVERSATIONAL ENGINE (BASED ON ANONYMOUS CHAT PIPELINE)
+// ----------------------------------------------------------------------------
+
+export interface GroupLeadConversationInput {
+  userMessageText: string;
+  userMessageId?: number;
+  groupId: string;
+  groupTitle: string;
+  senderId: string;
+  senderFirstName: string;
+  senderUsername?: string;
+  campaign: ProductCampaign;
+  isInitialLeadMatch?: boolean;
+  leadCategory?: LeadDetectionResult['category'];
+  matchedKeywords?: string[];
+  repliedBotMessageText?: string;
+  anonymousInstructions?: any;
+  strategy?: 'social_rapport' | 'direct_pitch' | 'consultative' | 'urgency_trial';
+  persona?: BotPersonaConfig;
+}
+
+export interface GroupLeadConversationResult {
+  replyText: string;
+  replyToMessageId: number; // ALWAYS EQUALS userMessageId!
+  usedAi: boolean;
+  intent: Intent;
+  leadScore: number;
+  conversationState: ConversationState;
+  turnCount: number;
+  objectionCategory?: string;
+  promptDirective?: string;
+}
+
+export interface GroupUserConversationEntry {
+  context: ConversationContext;
+  history: AnonymousChatMessage[];
+  lastActiveAt: number;
+  lastBotMessageId?: number;
+  lastBotReplyText?: string;
+  senderFirstName: string;
+  senderUsername?: string;
+  groupId: string;
+  groupTitle: string;
+}
+
+export const groupUserConversationStore = new Map<string, GroupUserConversationEntry>();
+
+export function getGroupConversationKey(groupId: string, senderId: string): string {
+  return `${groupId}_${senderId}`;
+}
+
+export function getGroupConversationEntry(groupId: string, senderId: string): GroupUserConversationEntry | undefined {
+  return groupUserConversationStore.get(getGroupConversationKey(groupId, senderId));
+}
+
+export function clearGroupConversationEntry(groupId: string, senderId: string): void {
+  groupUserConversationStore.delete(getGroupConversationKey(groupId, senderId));
+}
+
+/**
+ * Executes a full conversation turn in Telegram groups using the exact same deterministic pipeline
+ * (intent engine, lead scoring, objection engine, state machine, response validator, and adaptive Gemini)
+ * as the anonymous chat automator.
+ * 
+ * CRITICAL DIRECTIVE: Every single message returned has replyToMessageId === userMessageId so that
+ * all bot messages in crowded groups are sent strictly as REPLIES.
+ */
+export async function processGroupLeadConversationTurn(
+  input: GroupLeadConversationInput
+): Promise<GroupLeadConversationResult> {
+  const {
+    userMessageText,
+    userMessageId,
+    groupId,
+    groupTitle,
+    senderId,
+    senderFirstName,
+    senderUsername,
+    campaign,
+    isInitialLeadMatch,
+    leadCategory,
+    matchedKeywords,
+    repliedBotMessageText,
+    anonymousInstructions,
+    strategy,
+    persona,
+  } = input;
+
+  const key = getGroupConversationKey(groupId, senderId);
+  let entry = groupUserConversationStore.get(key);
+
+  const productConfig: ProductConfig = {
+    ...DEFAULT_NOVA_VPN_CONFIG,
+    productName: campaign.title || 'نوا وی پی ان',
+    productDescription: campaign.description || DEFAULT_NOVA_VPN_CONFIG.productDescription,
+    tagline: campaign.title || DEFAULT_NOVA_VPN_CONFIG.tagline,
+  };
+
+  const contactHandle = String(campaign.contactHandle || '@Nova_vpn10').replace(/^@+/, '');
+
+  if (!entry) {
+    const freshContext = createInitialConversationContext(
+      senderFirstName || 'کاربر',
+      `گروه تلگرام: ${groupTitle}`,
+      new Date().toISOString()
+    );
+    if (isInitialLeadMatch) {
+      freshContext.state = ConversationState.NEED_DETECTED;
+      freshContext.leadScore = 60;
+      freshContext.intent = Intent.VPN_REQUEST;
+      freshContext.detectedIntentsHistory = [Intent.VPN_REQUEST];
+    }
+    entry = {
+      context: freshContext,
+      history: [],
+      lastActiveAt: Date.now(),
+      senderFirstName,
+      senderUsername,
+      groupId,
+      groupTitle,
+    };
+    groupUserConversationStore.set(key, entry);
+  }
+
+  // Record user turn in history
+  const userMsgIdStr = `user_${userMessageId}_${Date.now()}`;
+  const userMsgRecord: AnonymousChatMessage = {
+    id: userMsgIdStr,
+    sender: 'stranger',
+    text: userMessageText,
+    timestamp: new Date().toISOString(),
+  };
+  entry.history.push(userMsgRecord);
+
+  // Keep history bounded to last 15 messages
+  if (entry.history.length > 15) {
+    entry.history = entry.history.slice(-15);
+  }
+
+  // Effective strategy: direct_pitch, consultative, or social_rapport
+  const effectiveStrategy = strategy || (anonymousInstructions?.strategy as any) || 'direct_pitch';
+
+  const defaultPersona: BotPersonaConfig = persona || {
+    name: (anonymousInstructions as any)?.personaName || 'سارا',
+    role: 'کاربر فعال گروه و مشتری راضی وی‌پی‌ان اختصاصی',
+    tone: 'casual',
+    age: '24',
+    bio: 'راهنمایی صمیمی، سریع و ارائه اکانت تست رایگان',
+  };
+
+  // Run through proven Conversation Engine & State Machine
+  const stepOutput = processConversationTurn(
+    userMessageText,
+    entry.context,
+    undefined,
+    8,
+    entry.history,
+    productConfig,
+    effectiveStrategy,
+    defaultPersona
+  );
+
+  entry.context = stepOutput.updatedContext;
+  entry.lastActiveAt = Date.now();
+
+  const currentIntent = stepOutput.intentResult.intent;
+  const objectionCategory = stepOutput.objectionAnalysis?.category;
+
+  // Prepare fallback text deterministically from conversationEngine results
+  let smartFallback = getSmartFallbackGroupConversationReply(userMessageText, campaign);
+  if (currentIntent === Intent.PRICE_REQUEST || currentIntent === Intent.PLAN_REQUEST) {
+    smartFallback = `تک کاربره ۵۹ دو کاربره ۸۹ تومنه، خواستی تست رایگان هم دارن قبلش چک کنی`;
+  } else if (currentIntent === Intent.TRIAL_REQUEST) {
+    smartFallback = `به آیدی ${contactHandle} پیام بده بگو تست می‌خوام رایگان میده بهت`;
+  } else if (currentIntent === Intent.OBJECTION) {
+    if (String(objectionCategory).toUpperCase().includes('PRICE')) {
+      smartFallback = `سروراش اختصاصیه قطعی نداره، اول تست رایگان بگیر چک کن اگه راضی بودی بعد بردار`;
+    } else if (String(objectionCategory).toUpperCase().includes('TRUST')) {
+      smartFallback = `حق داری الان خیلیا کلاهبردارن، برای همین اول تست رایگان میده که خیالت راحت بشه`;
+    } else {
+      smartFallback = `اول تست رایگان بگیر خودت رو گوشی چک کن بعد تصمیم بگیر`;
+    }
+  } else if (currentIntent === Intent.PURCHASE_INTENT) {
+    smartFallback = `به آیدی ${contactHandle} پیام بده سریع تحویلت میده`;
+  } else if (currentIntent === Intent.GOODBYE) {
+    smartFallback = `فدات کاری داشتی بگو`;
+  } else if (currentIntent === Intent.GREETING) {
+    smartFallback = `سلام قربانت خوبی چه خبر`;
+  }
+
+  let finalReplyText = smartFallback;
+  let usedAi = false;
+
+  const ai = getGenAiClient();
+  if (ai && process.env.GEMINI_API_KEY) {
+    const historyLines = entry.history
+      .slice(-6)
+      .map((h) => `${h.sender === 'stranger' ? 'کاربر' : 'شما'}: ${h.text}`)
+      .join('\n');
+
+    const personaInstructions = anonymousInstructions?.systemPrompt
+      ? `\n[دستورالعمل‌های تکمیلی لحن و استراتژی]:\n${String(anonymousInstructions.systemPrompt).slice(0, 400)}`
+      : '';
+
+    const groupPrompt = `شما به عنوان یک کاربر عادی و مشتری راضی فیلترشکن اختصاصی در گروه تلگرامی هستید.
+شما در حال چت و پاسخ دادن به پیام کاربری در این گروه هستید.
+پیام کاربر در گروه: "${userMessageText}"
+${repliedBotMessageText ? `پیام قبلی شما به این کاربر: "${repliedBotMessageText}"` : ''}
+${historyLines ? `تاریخچه پیام‌های رد و بدل شده در این گروه:\n${historyLines}\n` : ''}
+
+[تصمیم موتور مکالمه و ماشین وضعیت]:
+- قصد تشخیص‌داده‌شده: ${currentIntent}
+- وضعیت چت: ${stepOutput.updatedContext.state}
+- امتیاز نیاز کاربر: ${stepOutput.updatedContext.leadScore}/100
+- دستورالعمل هدف این دور: ${stepOutput.promptDirective}
+${stepOutput.objectionAnalysis ? `- رفع اشکال یا نگرانی کاربر: رفع دغدغه "${objectionCategory}" با پیشنهاد تست رایگان و اطمینان‌بخشی` : ''}
+
+اطلاعات کلیدی سرویس:
+- نام سرویس: ${campaign.title || 'نوا وی پی ان'}
+- تعرفه: تک‌کاربره ۵۹ تومن، دوکاربره ۸۹ تومن (یا ${campaign.price})
+- دریافت تست رایگان و خرید: پیام به آیدی ${contactHandle} (بدون علامت @)
+- کیفیت: بدون قطعی، مناسب تمام اپراتورها (ایرانسل، همراه اول، مخابرات)، پینگ عالی
+
+قوانین حیاتی چت گروهی تلگرام (رعایت ۱۰۰٪ الزامی):
+۱. فوق‌العاده کوتاه: پاسخ شما فقط ۱ یا حداکثر ۲ جمله محاوره‌ای بسیار کوتاه باشد (حدود ۵ الی ۱۲ کلمه!).
+۲. زبان کاملاً خودمانی و محاوره‌ای تهرانی (بدون هیچ لفظ کتابی یا رسمی).
+۳. بدون علائم نگارشی سنگین مانند نقطه در انتها (.)، علامت تعجب (!)، دونقطه (:) یا گیومه.
+۴. خط قرمز: هرگز نگویید ربات یا هوش مصنوعی هستید. شما یک هم‌گروهی صمیمی هستید.
+۵. خروجی فقط و فقط متن پیام باشد.${personaInstructions}`;
+
+    const candidateModels = getAdaptiveCandidateModels();
+    for (const modelName of candidateModels) {
+      try {
+        const timeoutMs = GEMINI_MODEL_METADATA[modelName]?.timeoutMs || 4500;
+        const apiPromise = ai.models.generateContent({
+          model: modelName,
+          contents: groupPrompt,
+          config: { temperature: 0.75 },
+        });
+        const res: any = await runWithTimeout(apiPromise, timeoutMs, 'GEMINI_TIMEOUT');
+        const text = (res?.text || '').trim();
+        if (text && text.length >= 2) {
+          recordGeminiSuccess(modelName);
+          const cleanedText = cleanTelegramChatText(text);
+          const valRes = validateAndSanitizeResponse(cleanedText, stepOutput.updatedContext, undefined, productConfig);
+          finalReplyText = valRes.sanitizedText || cleanedText;
+          usedAi = true;
+          break;
+        }
+      } catch (e: any) {
+        recordGeminiFailure(modelName, e);
+      }
+    }
+  }
+
+  // Record bot turn in history
+  const botMsgRecord: AnonymousChatMessage = {
+    id: `bot_${Date.now()}`,
+    sender: 'me_melody',
+    text: finalReplyText,
+    timestamp: new Date().toISOString(),
+  };
+  entry.history.push(botMsgRecord);
+  entry.lastBotReplyText = finalReplyText;
+  entry.lastBotMessageId = userMessageId; // Reference to the user's message replied to
+
+  return {
+    replyText: finalReplyText,
+    replyToMessageId: userMessageId, // ALWAYS REPLIES TO THE USER!
+    usedAi,
+    intent: currentIntent,
+    leadScore: stepOutput.updatedContext.leadScore,
+    conversationState: stepOutput.updatedContext.state,
+    turnCount: stepOutput.updatedContext.turnCount,
+    objectionCategory,
+    promptDirective: stepOutput.promptDirective,
+  };
 }
 
 /**

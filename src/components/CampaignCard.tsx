@@ -41,6 +41,7 @@ export const CampaignCard: React.FC<CampaignCardProps> = ({
   const [loading, setLoading] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [imageLoadError, setImageLoadError] = useState(false);
 
   // Gemini AI Caption Preview State
   const [aiPreviewOpen, setAiPreviewOpen] = useState(false);
@@ -73,17 +74,22 @@ export const CampaignCard: React.FC<CampaignCardProps> = ({
 
   // Sync form on initial mount or when user selects a different campaign
   useEffect(() => {
-    if (!hasInitializedRef.current && activeCampaign && !isCreatingNew) {
-      setSelectedCampaignId(activeCampaign.id);
-      setCurrentId(activeCampaign.id);
-      setTitle(activeCampaign.title || '');
-      setPrice(activeCampaign.price || '');
-      setDescription(activeCampaign.description || '');
-      setImageUrl(activeCampaign.imageUrl || '');
-      setContactHandle(activeCampaign.contactHandle || '');
-      setHashtagInput(Array.isArray(activeCampaign.hashtags) ? activeCampaign.hashtags.join(' ') : '');
-      loadedCampaignIdRef.current = activeCampaign.id;
-      hasInitializedRef.current = true;
+    if (!isCreatingNew && activeCampaign) {
+      if (loadedCampaignIdRef.current !== activeCampaign.id) {
+        setSelectedCampaignId(activeCampaign.id);
+        setCurrentId(activeCampaign.id);
+        setTitle(activeCampaign.title || '');
+        setPrice(activeCampaign.price || '');
+        setDescription(activeCampaign.description || '');
+        setImageUrl(activeCampaign.imageUrl || '');
+        setImageLoadError(false);
+        setContactHandle(activeCampaign.contactHandle || '');
+        setHashtagInput(Array.isArray(activeCampaign.hashtags) ? activeCampaign.hashtags.join(' ') : '');
+        loadedCampaignIdRef.current = activeCampaign.id;
+      } else if (activeCampaign.imageUrl && !imageUrl) {
+        setImageUrl(activeCampaign.imageUrl);
+        setImageLoadError(false);
+      }
     }
   }, [campaigns, activeCampaign, isCreatingNew]);
 
@@ -186,19 +192,22 @@ export const CampaignCard: React.FC<CampaignCardProps> = ({
             body: JSON.stringify({
               image: compressed,
               target: 'campaign',
-              campaignId: currentId || activeCampaign?.id,
+              campaignId: isCreatingNew ? undefined : (currentId || activeCampaign?.id),
             }),
           })
             .then((res) => res.json())
             .then((data) => {
               if (data.success && data.url) {
                 setImageUrl(data.url);
+                setImageLoadError(false);
               } else {
                 setImageUrl(compressed);
+                setImageLoadError(false);
               }
             })
             .catch(() => {
               setImageUrl(compressed);
+              setImageLoadError(false);
             })
             .finally(() => {
               setIsUploadingImage(false);
@@ -343,11 +352,35 @@ export const CampaignCard: React.FC<CampaignCardProps> = ({
         <form onSubmit={handleFormSubmit} className="space-y-4">
           
           {/* Quick Header Bar for Form */}
-          <div className="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-            <span className="text-xs text-slate-300 font-semibold flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-sky-400" />
-              {currentId ? 'در حال ویرایش کمپین ذخیره‌شده' : 'در حال ایجاد کمپین تبلیغاتی جدید'}
-            </span>
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-300 font-semibold flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+                {currentId ? 'ویرایش کمپین:' : 'ایجاد کمپین جدید'}
+              </span>
+
+              {campaigns.length > 0 && (
+                <select
+                  value={currentId || ''}
+                  onChange={(e) => {
+                    const found = campaigns.find(c => c.id === e.target.value);
+                    if (found) {
+                      handleSelectCampaignForEdit(found);
+                    } else {
+                      handleStartNew();
+                    }
+                  }}
+                  className="bg-slate-900 border border-slate-700 text-sky-300 text-xs rounded-lg px-2.5 py-1 focus:outline-none focus:border-sky-500"
+                >
+                  <option value="" disabled={!isCreatingNew}>-- انتخاب کمپین جهت ویرایش --</option>
+                  {campaigns.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.title} {c.isActive ? '⭐ (فعال در ارسال)' : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
 
             <button
               type="button"
@@ -556,7 +589,22 @@ export const CampaignCard: React.FC<CampaignCardProps> = ({
                   </div>
                 ) : imageUrl ? (
                   <>
-                    <img src={imageUrl} alt="کاور محصول" className="w-full h-full object-contain bg-slate-950 p-1" />
+                    {!imageLoadError ? (
+                      <img
+                        src={imageUrl}
+                        alt="کاور محصول"
+                        onError={() => setImageLoadError(true)}
+                        className="w-full h-full object-contain bg-slate-950 p-1"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center p-4 text-center text-amber-400">
+                        <AlertCircle className="w-8 h-8 mb-1.5 text-amber-400" />
+                        <span className="text-xs font-bold text-slate-200">عدم امکان بارگذاری تصویر از این آدرس</span>
+                        <span className="text-[10px] text-slate-400 mt-1 max-w-xs">
+                          ممکن است لینک منقضی شده باشد یا فرمت نامعتبر باشد. با دکمه زیر عکس را مستقیماً آپلود کنید.
+                        </span>
+                      </div>
+                    )}
                     <div className="absolute inset-0 bg-slate-950/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                       <label className="px-3 py-1.5 rounded-lg bg-sky-500 text-slate-950 font-bold text-xs cursor-pointer hover:bg-sky-400 flex items-center gap-1 shadow-lg">
                         <Upload className="w-3.5 h-3.5" />
@@ -565,7 +613,10 @@ export const CampaignCard: React.FC<CampaignCardProps> = ({
                       </label>
                       <button
                         type="button"
-                        onClick={() => setImageUrl('')}
+                        onClick={() => {
+                          setImageUrl('');
+                          setImageLoadError(false);
+                        }}
                         className="px-3 py-1.5 rounded-lg bg-rose-500 text-white font-bold text-xs hover:bg-rose-600 flex items-center gap-1 shadow-lg"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -577,7 +628,7 @@ export const CampaignCard: React.FC<CampaignCardProps> = ({
                   <label className="flex flex-col items-center justify-center p-6 cursor-pointer text-slate-400 hover:text-white w-full h-full text-center">
                     <Upload className="w-9 h-9 text-sky-400 mb-2 animate-bounce" />
                     <span className="text-xs font-bold text-slate-200">جهت آپلود عکس محصول اینجا کلیک کنید</span>
-                    <span className="text-[10px] text-slate-500 mt-1">فرمت‌های PNG, JPG, WEBP (فشرده‌سازی خودکار کیفیت)</span>
+                    <span className="text-[10px] text-slate-500 mt-1">فرمت‌های PNG, JPG, WEBP (فشرده‌سازی خودکار و ذخیره پایدار)</span>
                     <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
                   </label>
                 )}
@@ -587,10 +638,16 @@ export const CampaignCard: React.FC<CampaignCardProps> = ({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-[11px] text-slate-400">یا آدرس مستقیم تصویر (URL):</label>
-                  {imageUrl && (
+                  {imageUrl && !imageLoadError && (
                     <span className="text-[10px] text-emerald-400 flex items-center gap-1">
                       <Check className="w-3 h-3" />
-                      تصویر ثبت شده است
+                      تصویر ثبت و لود شده است
+                    </span>
+                  )}
+                  {imageLoadError && (
+                    <span className="text-[10px] text-rose-400 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      خطا در لود تصویر
                     </span>
                   )}
                 </div>
@@ -598,7 +655,10 @@ export const CampaignCard: React.FC<CampaignCardProps> = ({
                   type="text"
                   placeholder="/uploads/... یا https://example.com/image.jpg"
                   value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
+                  onChange={(e) => {
+                    setImageUrl(e.target.value);
+                    setImageLoadError(false);
+                  }}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-sky-500 dir-ltr text-left"
                 />
               </div>

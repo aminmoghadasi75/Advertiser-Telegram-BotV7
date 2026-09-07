@@ -185,7 +185,7 @@ export default function App() {
     await fetchState();
   };
 
-  const handleToggleModule = async (id: string, module: 'group_broadcast' | 'anonymous_bot' | 'pv_reply', enabled: boolean) => {
+  const handleToggleModule = async (id: string, module: 'group_broadcast' | 'anonymous_bot' | 'pv_reply' | 'personal_account' | 'strict_isolation', enabled: boolean) => {
     await fetch('/api/accounts/toggle-module', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1339,6 +1339,7 @@ export default function App() {
                     onToggleListener={handleToggleListener}
                     onTestSimulateLead={handleTestSimulateLead}
                     onClearLeads={handleClearLeads}
+                    onToggleAccountModule={handleToggleModule}
                   />
                 </div>
               </div>
@@ -1359,6 +1360,7 @@ export default function App() {
                   onToggleListener={handleToggleListener}
                   onTestSimulateLead={handleTestSimulateLead}
                   onClearLeads={handleClearLeads}
+                  onToggleAccountModule={handleToggleModule}
                 />
               </div>
             )}

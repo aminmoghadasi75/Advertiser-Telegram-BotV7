@@ -46,7 +46,7 @@ interface AccountManagerCardProps {
   onUpdateAccountSettings?: (accountId: string, settings: Partial<TelegramAccount>) => Promise<void>;
   onSelectActiveAccount: (id: string) => Promise<void>;
   onToggleAccountActive: (id: string, isActive: boolean) => Promise<void>;
-  onToggleModule?: (id: string, module: 'group_broadcast' | 'anonymous_bot' | 'pv_reply', enabled: boolean) => Promise<void>;
+  onToggleModule?: (id: string, module: 'group_broadcast' | 'anonymous_bot' | 'pv_reply' | 'personal_account' | 'strict_isolation', enabled: boolean) => Promise<void>;
   onBulkToggleModule?: (module: 'group_broadcast' | 'anonymous_bot' | 'pv_reply', enabled: boolean) => Promise<void>;
   onVerifyAllAccounts?: () => Promise<void>;
   onVerifySingleAccount?: (id: string) => Promise<void>;
@@ -149,7 +149,7 @@ export const AccountManagerCard: React.FC<AccountManagerCardProps> = ({
     }
   };
 
-  const handleToggleModuleAction = async (id: string, module: 'group_broadcast' | 'anonymous_bot' | 'pv_reply', current: boolean) => {
+  const handleToggleModuleAction = async (id: string, module: 'group_broadcast' | 'anonymous_bot' | 'pv_reply' | 'personal_account' | 'strict_isolation', current: boolean) => {
     if (!onToggleModule) return;
     setLoadingId(`${id}_${module}`);
     try {
@@ -718,30 +718,116 @@ export const AccountManagerCard: React.FC<AccountManagerCardProps> = ({
                   </span>
                 </div>
 
+                {/* Personal Account & Strict Isolation Safety Shield */}
+                {(() => {
+                  const isPersonal = Boolean(acc.isPersonalAccount);
+                  const isStrictIso = Boolean(acc.strictIsolationMode);
+                  return (
+                    <div className={`p-3 rounded-xl border transition-all ${
+                      isPersonal
+                        ? 'bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-slate-950 border-purple-500/40 shadow-sm shadow-purple-950/50'
+                        : 'bg-slate-900/40 border-slate-800/80'
+                    }`}>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                        <div className="flex items-start sm:items-center gap-2">
+                          <ShieldCheck className={`w-4 h-4 mt-0.5 sm:mt-0 shrink-0 ${isPersonal ? 'text-purple-400' : 'text-slate-500'}`} />
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-xs font-bold text-slate-200">
+                                {isPersonal ? '🛡️ اکانت شخصی امن (حالت ایزولاسیون ۱۰۰٪ فعال)' : 'حالت کاربری اکانت:'}
+                              </span>
+                              {isPersonal && (
+                                <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.2 rounded-full font-bold">
+                                  عدم مداخله در گروه‌های شخصی
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                              {isPersonal
+                                ? 'این اکانت به عنوان حساب شخصی شما تنظیم شده است؛ ارسال پیام و شنود در تمام گروه‌های شخصی، کاری و خانوادگی شما کاملاً مسدود و قفل است.'
+                                : 'این اکانت به عنوان حساب ربات کاری تنظیم شده و در ارسال تبلیغات به گروه‌ها مشارکت می‌کند.'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleModuleAction(acc.id, 'personal_account', isPersonal)}
+                            disabled={loadingId === `${acc.id}_personal_account`}
+                            className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center gap-1.5 ${
+                              isPersonal
+                                ? 'bg-purple-600/30 border-purple-500/60 text-purple-200 hover:bg-purple-600/40'
+                                : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-800'
+                            }`}
+                          >
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                            <span>{isPersonal ? 'حالت شخصی (ایزوله)' : 'تبدیل به اکانت شخصی'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Granular Module Participation Checkboxes */}
-                <div className="bg-slate-900/60 rounded-lg p-2 border border-slate-800/80 space-y-2">
-                  <span className="text-[11px] font-bold text-slate-300 block">
-                    تخصیص نقش و فعالیت این اکانت در بخش‌ها:
-                  </span>
+                <div className="bg-slate-900/60 rounded-lg p-2.5 border border-slate-800/80 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-300 block">
+                      فعال‌سازی دستی قابلیت‌ها برای این اکانت:
+                    </span>
+                    <span className="text-[10px] text-slate-500">کنترل تفکیک‌شده</span>
+                  </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                    {/* Inbound PV Auto-Reply Toggle (Prominent) */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleModuleAction(acc.id, 'pv_reply', isPvReplyEnabled)}
+                      disabled={loadingId === `${acc.id}_pv_reply`}
+                      title={isPvReplyEnabled ? 'پاسخگویی خودکار به پی‌وی فعال است' : 'پاسخگویی خودکار خاموش است'}
+                      className={`p-2.5 rounded-lg border text-right transition-all flex items-center justify-between ${
+                        isPvReplyEnabled
+                          ? 'bg-purple-500/15 border-purple-500/50 text-purple-200 font-bold shadow-sm shadow-purple-500/10'
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <MessageCircle className="w-4 h-4 text-purple-400 shrink-0" />
+                        <div>
+                          <span className="text-[11px] block">پاسخ به پی‌وی (PV)</span>
+                          <span className="text-[9px] text-slate-400 font-normal">
+                            {isPvReplyEnabled ? 'هوش مصنوعی پاسخ می‌دهد' : 'خاموش (پاسخ دستی)'}
+                          </span>
+                        </div>
+                      </div>
+                      <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${isPvReplyEnabled ? 'bg-purple-500/30 text-purple-200 border border-purple-500/40' : 'bg-slate-800 text-slate-400'}`}>
+                        {isPvReplyEnabled ? 'روشن' : 'خاموش'}
+                      </span>
+                    </button>
+
                     {/* Group Broadcast Toggle */}
                     <button
                       type="button"
                       onClick={() => handleToggleModuleAction(acc.id, 'group_broadcast', isGroupBroadcastEnabled)}
                       disabled={loadingId === `${acc.id}_group_broadcast`}
-                      className={`p-2 rounded-lg border text-right transition-all flex items-center justify-between ${
+                      className={`p-2.5 rounded-lg border text-right transition-all flex items-center justify-between ${
                         isGroupBroadcastEnabled
                           ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-200 font-bold'
                           : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
                       }`}
                     >
                       <div className="flex items-center gap-1.5">
-                        <Megaphone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span className="text-[11px]">ارسال به گروه‌ها</span>
+                        <Megaphone className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <div>
+                          <span className="text-[11px] block">ارسال به گروه‌ها</span>
+                          <span className="text-[9px] text-slate-400 font-normal">
+                            {isGroupBroadcastEnabled ? 'مجاز در گروه‌های هدف' : 'قفل شده (ایمن)'}
+                          </span>
+                        </div>
                       </div>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${isGroupBroadcastEnabled ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-400'}`}>
-                        {isGroupBroadcastEnabled ? 'فعال' : 'غیرفعال'}
+                      <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${isGroupBroadcastEnabled ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-400'}`}>
+                        {isGroupBroadcastEnabled ? 'روشن' : 'خاموش'}
                       </span>
                     </button>
 
@@ -750,55 +836,39 @@ export const AccountManagerCard: React.FC<AccountManagerCardProps> = ({
                       type="button"
                       onClick={() => handleToggleModuleAction(acc.id, 'anonymous_bot', isAnonymousBotEnabled)}
                       disabled={loadingId === `${acc.id}_anonymous_bot`}
-                      className={`p-2 rounded-lg border text-right transition-all flex items-center justify-between ${
+                      className={`p-2.5 rounded-lg border text-right transition-all flex items-center justify-between ${
                         isAnonymousBotEnabled
                           ? 'bg-sky-500/10 border-sky-500/40 text-sky-200 font-bold'
                           : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
                       }`}
                     >
                       <div className="flex items-center gap-1.5">
-                        <MessageSquare className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                        <span className="text-[11px]">ربات ناشناس</span>
+                        <MessageSquare className="w-4 h-4 text-sky-400 shrink-0" />
+                        <div>
+                          <span className="text-[11px] block">ربات ناشناس</span>
+                          <span className="text-[9px] text-slate-400 font-normal">
+                            {isAnonymousBotEnabled ? 'چت و تبلیغ فعال' : 'خاموش'}
+                          </span>
+                        </div>
                       </div>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${isAnonymousBotEnabled ? 'bg-sky-500/20 text-sky-300' : 'bg-slate-800 text-slate-400'}`}>
-                        {isAnonymousBotEnabled ? 'فعال' : 'غیرفعال'}
-                      </span>
-                    </button>
-
-                    {/* Inbound PV Auto-Reply Toggle */}
-                    <button
-                      type="button"
-                      onClick={() => handleToggleModuleAction(acc.id, 'pv_reply', isPvReplyEnabled)}
-                      disabled={loadingId === `${acc.id}_pv_reply`}
-                      title={isPvReplyEnabled ? 'پاسخگویی خودکار ربات به پیام‌های شخصی فعال است' : 'پاسخگویی خودکار خاموش است و پیام‌ها را شخصاً در تلگرام پاسخ می‌دهید'}
-                      className={`p-2 rounded-lg border text-right transition-all flex items-center justify-between ${
-                        isPvReplyEnabled
-                          ? 'bg-purple-500/10 border-purple-500/40 text-purple-200 font-bold shadow-sm shadow-purple-500/5'
-                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <MessageCircle className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                        <span className="text-[11px]">پاسخ به پی‌وی (PV)</span>
-                      </div>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${isPvReplyEnabled ? 'bg-purple-500/20 text-purple-300' : 'bg-slate-800 text-slate-400'}`}>
-                        {isPvReplyEnabled ? 'فعال (بات)' : 'غیرفعال (شخصی)'}
+                      <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${isAnonymousBotEnabled ? 'bg-sky-500/20 text-sky-300' : 'bg-slate-800 text-slate-400'}`}>
+                        {isAnonymousBotEnabled ? 'روشن' : 'خاموش'}
                       </span>
                     </button>
                   </div>
 
                   {/* Status Helper & Explanation */}
                   <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-800/40 text-[10px] flex-wrap">
-                    <div className={isPvReplyEnabled ? "text-purple-300/80 flex items-center gap-1" : "text-emerald-400/90 flex items-center gap-1 font-medium"}>
+                    <div className={isPvReplyEnabled ? "text-purple-300 flex items-center gap-1 font-medium" : "text-slate-400 flex items-center gap-1"}>
                       {isPvReplyEnabled ? (
                         <>
                           <Sparkles className="w-3 h-3 text-purple-400 shrink-0" />
-                          <span>پاسخ خودکار ربات به پیام‌های ورودی پی‌وی این اکانت فعال است.</span>
+                          <span>پاسخگویی خودکار ربات به پیام‌های ورودی پی‌وی این اکانت فعال و بیدار است.</span>
                         </>
                       ) : (
                         <>
                           <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
-                          <span>پاسخ به پیام‌های ورودی پی‌وی خاموش است (شخصاً جواب می‌دهید). ارسال تبلیغات، پیام به پی‌وی کاربران و ریپلای در گروه برای این اکانت فعال و مجاز است.</span>
+                          <span>پاسخگویی خودکار به پی‌وی خاموش است و پیام‌های شخصی را خودتان دستی جواب می‌دهید.</span>
                         </>
                       )}
                     </div>

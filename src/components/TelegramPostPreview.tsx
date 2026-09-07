@@ -9,7 +9,13 @@ interface TelegramPostPreviewProps {
 
 export const TelegramPostPreview: React.FC<TelegramPostPreviewProps> = ({ campaign }) => {
   const [shuffleIndex, setShuffleIndex] = useState(0);
+  const [imgError, setImgError] = useState(false);
   const timeString = new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+
+  // Reset imgError if campaign image changes
+  React.useEffect(() => {
+    setImgError(false);
+  }, [campaign.imageUrl]);
 
   // Resolve dynamic Spintax and variables for live preview
   const resolvedTitle = processMessageWithSpintaxAndVars(campaign.title || 'عنوان محصول شما', {
@@ -61,17 +67,23 @@ export const TelegramPostPreview: React.FC<TelegramPostPreviewProps> = ({ campai
       <div className="mt-3.5 bg-[#1e2c3a] border border-[#2b3a4a] rounded-2xl overflow-hidden max-w-sm mx-auto shadow-lg transition-all hover:border-[#38495a]">
         
         {/* Product Image */}
-        {campaign.imageUrl ? (
+        {campaign.imageUrl && !imgError ? (
           <div className="relative aspect-video bg-[#182533] overflow-hidden group">
             <img
               src={campaign.imageUrl}
               alt={campaign.title}
+              onError={() => setImgError(true)}
               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
             />
             <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-bold text-white border border-white/10 flex items-center gap-1">
               <Tag className="w-3 h-3 text-emerald-400" />
               {campaign.price}
             </div>
+          </div>
+        ) : campaign.imageUrl && imgError ? (
+          <div className="aspect-video bg-[#182533] p-3 flex flex-col items-center justify-center text-center text-xs text-amber-400/80">
+            <span className="font-bold text-[11px]">عدم امکان نمایش پیش‌نمایش تصویر در مرورگر</span>
+            <span className="text-[9px] text-slate-400 mt-0.5">لطفاً در کارت بالا عکس را مجدد آپلود کنید یا آدرس معتبر قرار دهید.</span>
           </div>
         ) : (
           <div className="aspect-video bg-[#182533] flex items-center justify-center text-xs text-[#6c7883]">

@@ -41,6 +41,8 @@ import {
   TrendingUp,
   Lightbulb,
   ShieldAlert,
+  Power,
+  Users,
 } from 'lucide-react';
 
 interface GroupPromotionStrategiesCardProps {
@@ -55,6 +57,7 @@ interface GroupPromotionStrategiesCardProps {
   onToggleListener: (active: boolean) => Promise<void>;
   onTestSimulateLead: (sampleText: string) => Promise<any>;
   onClearLeads?: () => Promise<void>;
+  onToggleAccountModule?: (accountId: string, module: 'pv_reply' | 'group_broadcast' | 'personal_account' | 'strict_isolation', enabled: boolean) => Promise<void>;
 }
 
 export const GroupPromotionStrategiesCard: React.FC<GroupPromotionStrategiesCardProps> = ({
@@ -69,6 +72,7 @@ export const GroupPromotionStrategiesCard: React.FC<GroupPromotionStrategiesCard
   onToggleListener,
   onTestSimulateLead,
   onClearLeads,
+  onToggleAccountModule,
 }) => {
   // Safe default config
   const config = strategyConfig || {
@@ -177,6 +181,89 @@ export const GroupPromotionStrategiesCard: React.FC<GroupPromotionStrategiesCard
   const [inboundTestResult, setInboundTestResult] = useState<any>(null);
   const [supportContactInput, setSupportContactInput] = useState(config.strategy2.supportContactHandle || '@Nova_vpn10');
   const [retryingLeadId, setRetryingLeadId] = useState<string | null>(null);
+
+  // Manual Inbound PV & Isolation Mode States
+  const [isTogglingPvMaster, setIsTogglingPvMaster] = useState(false);
+  const [isTogglingAccountAction, setIsTogglingAccountAction] = useState<string | null>(null);
+
+  const handleToggleMasterPvReply = async (enabled: boolean) => {
+    setIsTogglingPvMaster(true);
+    try {
+      const res = await fetch('/api/strategy/strategy2/toggle-inbound-pv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      });
+      const data = await res.json();
+      if (data.success && onUpdateStrategyConfig) {
+        await onUpdateStrategyConfig({
+          strategy2: {
+            ...config.strategy2,
+            autoReplyInboundPv: enabled,
+          },
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsTogglingPvMaster(false);
+    }
+  };
+
+  const handleChangeInboundPvScope = async (inboundPvScope: 'all_messages' | 'product_inquiries_only') => {
+    try {
+      const res = await fetch('/api/strategy/strategy2/toggle-inbound-pv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inboundPvScope }),
+      });
+      const data = await res.json();
+      if (data.success && onUpdateStrategyConfig) {
+        await onUpdateStrategyConfig({
+          strategy2: {
+            ...config.strategy2,
+            inboundPvScope,
+          },
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleAccountPvToggle = async (accId: string, current: boolean) => {
+    setIsTogglingAccountAction(accId);
+    try {
+      if (onToggleAccountModule) {
+        await onToggleAccountModule(accId, 'pv_reply', !current);
+      } else {
+        await fetch('/api/strategy/strategy2/toggle-inbound-pv', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accountId: accId, enableForPvReply: !current }),
+        });
+      }
+    } finally {
+      setIsTogglingAccountAction(null);
+    }
+  };
+
+  const handleAccountPersonalModeToggle = async (accId: string, current: boolean) => {
+    setIsTogglingAccountAction(accId);
+    try {
+      if (onToggleAccountModule) {
+        await onToggleAccountModule(accId, 'personal_account', !current);
+      } else {
+        await fetch('/api/accounts/toggle-personal-mode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accountId: accId, isPersonalAccount: !current }),
+        });
+      }
+    } finally {
+      setIsTogglingAccountAction(null);
+    }
+  };
 
   const handleRetryLeadPv = async (leadId: string) => {
     setRetryingLeadId(leadId);
@@ -1116,6 +1203,73 @@ export const GroupPromotionStrategiesCard: React.FC<GroupPromotionStrategiesCard
               />
             </div>
 
+            {/* 1.1.B. Anonymous Chat Automation Engine in Groups */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-950/60 to-slate-950 border border-indigo-500/40 ring-1 ring-indigo-500/30 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Bot className="w-4 h-4 text-indigo-400" />
+                    <span className="text-xs font-bold text-white">
+                      موتور مکالمه هوشمند چت ناشناس در گروه
+                    </span>
+                    <span className="text-[9px] bg-indigo-500/30 text-indigo-200 px-1.5 py-0.2 rounded font-bold">
+                      الگوریتم پیشرفته
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    استفاده از الگوریتم و هوش هیجانی اتوماسیون چت ناشناس برای مکالمه طبیعی، تشخیص نیت کاربر، رفع ابهامات و هدایت به محصول.
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={config.strategy2.useAnonymousEngineInGroup !== false}
+                  onChange={(e) => handleStrategy2Toggle('useAnonymousEngineInGroup', e.target.checked)}
+                  className="w-4 h-4 mt-1 rounded text-indigo-600 bg-slate-900 border-slate-700 focus:ring-indigo-500"
+                />
+              </div>
+
+              {/* Strategy Mode Selector */}
+              <div className="pt-2 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <span className="text-[10px] text-indigo-300 font-bold">
+                  استراتژی مکالمه موتور:
+                </span>
+                <select
+                  value={config.strategy2.anonymousEngineStrategy || 'direct_pitch'}
+                  onChange={(e) => handleStrategy2Toggle('anonymousEngineStrategy', e.target.value)}
+                  className="text-xs bg-slate-900 border border-indigo-500/40 text-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                >
+                  <option value="direct_pitch">معرفی مستقیم و تست رایگان (پیش‌فرض)</option>
+                  <option value="curiosity_hook">ایجاد کنجکاوی و سوال</option>
+                  <option value="problem_agitation">همدردی با قطعی نت و ارائه راه‌حل</option>
+                  <option value="friend_recommendation">پیشنهاد دوستانه و تجربه شخصی</option>
+                </select>
+              </div>
+            </div>
+
+            {/* 1.1.C. Guaranteed Reply-Only Mode */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-950/40 to-slate-950 border border-emerald-500/40 ring-1 ring-emerald-500/30 flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span className="text-xs font-bold text-white">
+                    ارسال ۱۰۰٪ به صورت ریپلای (تضمین دیده شدن)
+                  </span>
+                  <span className="text-[9px] bg-emerald-500/30 text-emerald-200 px-1.5 py-0.2 rounded font-bold">
+                    ریپلای الزامی
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  تمام پیام‌های ربات در گروه‌ها دقیقاً روی پیام کاربر نیازمند یا ریپلای‌کننده ریپلای می‌شوند تا در ترافیک و شلوغی بالای پیام‌های گروه گم نشوند.
+                </p>
+              </div>
+              <input
+                type="checkbox"
+                checked={config.strategy2.groupReplyAlwaysWithReply !== false}
+                onChange={(e) => handleStrategy2Toggle('groupReplyAlwaysWithReply', e.target.checked)}
+                className="w-4 h-4 mt-1 rounded text-emerald-600 bg-slate-900 border-slate-700 focus:ring-emerald-500"
+              />
+            </div>
+
             {/* 1.2. Ultra-short Human Chat Style */}
             <div className="p-4 rounded-2xl bg-slate-950/70 border border-amber-500/30 ring-1 ring-amber-500/20 flex items-start justify-between gap-3">
               <div className="space-y-1">
@@ -1685,34 +1839,237 @@ export const GroupPromotionStrategiesCard: React.FC<GroupPromotionStrategiesCard
               <div className="flex items-center gap-2">
                 <UserCheck className="w-5 h-5 text-emerald-400" />
                 <h3 className="text-base font-bold text-white">
-                  پاسخگویی خودکار به پیام‌های خصوصی (Inbound PV Auto-Responder)
+                  سامانه پاسخگویی خودکار به پی‌وی و پشتیبانی هوشمند (Inbound PV Engine)
                 </h3>
-                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
-                  آماده شنود و پاسخگویی
+                <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${
+                  config.strategy2.autoReplyInboundPv !== false
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                    : 'bg-slate-800 text-slate-400 border-slate-700'
+                }`}>
+                  {config.strategy2.autoReplyInboundPv !== false ? '● آماده شنود و پاسخگویی آنی' : '○ متوقف شده (دستی)'}
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                هنگامی که کاربران به پیام تبلیغاتی صمیمی شما در پی‌وی پاسخ می‌دهند، ربات بصورت هوشمند آنها را راهنمایی و به آیدی پشتیبانی هدایت می‌کند.
+                ربات پیام‌های کاربران در پی‌وی را بلافاصله دریافت کرده و با هوش مصنوعی دوستانه، سوالات آنها را پاسخ داده و به پشتیبانی هدایت می‌کند.
               </p>
             </div>
 
-            {config.inboundPvConversations && config.inboundPvConversations.length > 0 && (
-              <button
-                type="button"
-                onClick={async () => {
-                  if (confirm('آیا از پاکسازی گفتگوهای ورودی مطمئن هستید؟')) {
-                    await fetch('/api/strategy/strategy2/clear-inbound-conversations', { method: 'POST' });
-                    if (onUpdateStrategyConfig) {
-                      await onUpdateStrategyConfig({ inboundPvConversations: [] });
+            <div className="flex items-center gap-2 flex-wrap">
+              {config.inboundPvConversations && config.inboundPvConversations.length > 0 && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (confirm('آیا از پاکسازی گفتگوهای ورودی مطمئن هستید؟')) {
+                      await fetch('/api/strategy/strategy2/clear-inbound-conversations', { method: 'POST' });
+                      if (onUpdateStrategyConfig) {
+                        await onUpdateStrategyConfig({ inboundPvConversations: [] });
+                      }
                     }
-                  }
-                }}
-                className="text-xs text-slate-400 hover:text-rose-400 transition-colors flex items-center gap-1 shrink-0"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>پاکسازی تاریخچه گفتگوها</span>
-              </button>
-            )}
+                  }}
+                  className="text-xs text-slate-400 hover:text-rose-400 transition-colors flex items-center gap-1 shrink-0 px-2 py-1 rounded bg-slate-950 border border-slate-800"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>پاکسازی تاریخچه</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* MASTER TOGGLE & ISOLATION SAFETY CONTROLS */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* 1. Master PV Auto-Reply Switch */}
+            <div className={`p-4 sm:p-5 rounded-2xl border transition-all ${
+              config.strategy2.autoReplyInboundPv !== false
+                ? 'bg-gradient-to-br from-emerald-950/40 via-slate-950 to-slate-950 border-emerald-500/40 shadow-lg shadow-emerald-950/30'
+                : 'bg-slate-950 border-slate-800'
+            }`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Bot className="w-5 h-5 text-emerald-400" />
+                    <span className="text-sm font-bold text-white">
+                      کنترل دستی پاسخگویی خودکار به پی‌وی
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    با این کلید می‌توانید در هر لحظه پاسخگویی خودکار ربات به پی‌وی را فعال یا غیرفعال کنید.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleToggleMasterPvReply(config.strategy2.autoReplyInboundPv === false)}
+                  disabled={isTogglingPvMaster}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 border ${
+                    config.strategy2.autoReplyInboundPv !== false
+                      ? 'bg-emerald-500 text-slate-950 border-emerald-400 hover:bg-emerald-400 font-black shadow-md shadow-emerald-500/20'
+                      : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                  }`}
+                >
+                  <Power className={`w-4 h-4 ${isTogglingPvMaster ? 'animate-spin' : ''}`} />
+                  <span>{config.strategy2.autoReplyInboundPv !== false ? 'روشن (فعال)' : 'خاموش (دستی)'}</span>
+                </button>
+              </div>
+
+              {/* Scope Selection */}
+              <div className="mt-4 pt-3 border-t border-slate-800/80 space-y-2">
+                <span className="text-[11px] font-bold text-slate-300 block">
+                  دامنه پیام‌های ورودی پی‌وی برای پاسخگویی خودکار:
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => handleChangeInboundPvScope('all_messages')}
+                    className={`p-2 rounded-xl border text-right transition-all flex items-center justify-between ${
+                      (config.strategy2.inboundPvScope || 'all_messages') === 'all_messages'
+                        ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-200 font-bold'
+                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <div>
+                      <span className="block text-[11px]">پاسخ به تمام پیام‌ها</span>
+                      <span className="text-[10px] text-slate-400 font-normal">تست آنی و راهنمایی تمام پیام‌ها</span>
+                    </div>
+                    {(config.strategy2.inboundPvScope || 'all_messages') === 'all_messages' && (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleChangeInboundPvScope('product_inquiries_only')}
+                    className={`p-2 rounded-xl border text-right transition-all flex items-center justify-between ${
+                      config.strategy2.inboundPvScope === 'product_inquiries_only'
+                        ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-200 font-bold'
+                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <div>
+                      <span className="block text-[11px]">فقط استعلامات سرویس</span>
+                      <span className="text-[10px] text-slate-400 font-normal">پیام‌های شخصی مسکوت می‌ماند</span>
+                    </div>
+                    {config.strategy2.inboundPvScope === 'product_inquiries_only' && (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Target Group Strict Isolation Shield */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-indigo-950/40 via-purple-950/20 to-slate-950 border border-indigo-500/30 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-indigo-400" />
+                    <span className="text-sm font-bold text-white">
+                      سپر ایزولاسیون ۱۰۰٪ امن گروه‌های هدف
+                    </span>
+                    <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 px-2 py-0.2 rounded-full font-bold">
+                      Strict Isolation
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    تضمین قطعی عدم مداخله در گروه‌های شخصی، کاری و خانوادگی شما:
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/80 rounded-xl p-3 border border-indigo-500/20 space-y-2 text-[11px] text-slate-300">
+                <div className="flex items-center gap-2 text-emerald-400 font-medium">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>تطبیق دقیق شناسه عددی با لیست گروه‌های هدف (Target Whitelist)</span>
+                </div>
+                <div className="flex items-center gap-2 text-indigo-300 font-medium">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>قفل کامل ارسال پیام به گروه‌ها برای اکانت شخصی</span>
+                </div>
+                <div className="flex items-center gap-2 text-purple-300 font-medium">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>عدم شنود و نادیده‌گرفتن مطلق پیام‌ها در گروه‌های شخصی و ناشناس</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* PER-ACCOUNT PV AUTO-REPLY STATUS & TOGGLES */}
+          <div className="bg-slate-950 rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-purple-400" />
+                <h4 className="text-xs font-bold text-white">
+                  وضعیت تفکیک‌شده اکانت‌ها برای پاسخگویی به پی‌وی و ایزولاسیون:
+                </h4>
+              </div>
+              <span className="text-[10px] text-slate-400">کنترل آنی با یک کلیک</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {(accounts || []).map((acc) => {
+                const isPersonal = Boolean(acc.isPersonalAccount);
+                const isPvEnabled = acc.enableForPvReply !== false;
+                const isOperating = isTogglingAccountAction === acc.id;
+
+                return (
+                  <div
+                    key={acc.id}
+                    className={`p-3 rounded-xl border transition-all ${
+                      isPersonal
+                        ? 'bg-purple-950/20 border-purple-500/40 ring-1 ring-purple-500/20'
+                        : 'bg-slate-900/60 border-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                          isPersonal ? 'bg-purple-600/30 text-purple-300 border border-purple-500/40' : 'bg-slate-800 text-slate-300'
+                        }`}>
+                          {isPersonal ? '🛡️' : '👤'}
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-xs font-bold text-white block truncate">
+                            {acc.userProfile?.firstName || acc.phoneNumber || acc.id}
+                          </span>
+                          <span className="text-[10px] text-slate-400 block font-mono" dir="ltr">
+                            {acc.phoneNumber}
+                          </span>
+                        </div>
+                      </div>
+
+                      {isPersonal && (
+                        <span className="text-[9px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.5 rounded font-bold shrink-0">
+                          اکانت شخصی
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-slate-400">پاسخ به پی‌وی:</span>
+                      <button
+                        type="button"
+                        onClick={() => handleAccountPvToggle(acc.id, isPvEnabled)}
+                        disabled={isOperating}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 border ${
+                          isPvEnabled
+                            ? 'bg-purple-500/20 text-purple-200 border-purple-500/40 hover:bg-purple-500/30'
+                            : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
+                        }`}
+                      >
+                        <Power className={`w-3 h-3 ${isOperating ? 'animate-spin' : ''}`} />
+                        <span>{isPvEnabled ? 'فعال (بات پاسخ می‌دهد)' : 'غیرفعال (شخصی)'}</span>
+                      </button>
+                    </div>
+
+                    {isPersonal && (
+                      <div className="mt-2 text-[10px] text-emerald-400/90 flex items-center gap-1 bg-emerald-950/20 rounded p-1 border border-emerald-500/20">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                        <span>گروه‌های شخصی ۱۰۰٪ ایزوله و محافظت‌شده هستند.</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {/* Quick Metrics */}

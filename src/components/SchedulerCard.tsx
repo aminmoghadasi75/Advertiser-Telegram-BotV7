@@ -20,6 +20,7 @@ export const SchedulerCard: React.FC<SchedulerCardProps> = ({
   const [intervalMinutes, setIntervalMinutes] = useState(scheduler.intervalMinutes || 15);
   const [jitterSeconds, setJitterSeconds] = useState(scheduler.jitterSeconds || 45);
   const [dailyLimit, setDailyLimit] = useState(scheduler.dailyLimit || 35);
+  const [hourlyLimit, setHourlyLimit] = useState(scheduler.hourlyLimit || 6);
   const [nightModePause, setNightModePause] = useState(scheduler.nightModePause ?? true);
   const [onlyPromotionalGroups, setOnlyPromotionalGroups] = useState(Boolean(scheduler.onlyPromotionalGroups));
   const [onlyPersianVerifiedGroups, setOnlyPersianVerifiedGroups] = useState(scheduler.onlyPersianVerifiedGroups !== false);
@@ -43,6 +44,7 @@ export const SchedulerCard: React.FC<SchedulerCardProps> = ({
         intervalMinutes,
         jitterSeconds,
         dailyLimit,
+        hourlyLimit,
         nightModePause,
         onlyPromotionalGroups,
         onlyPersianVerifiedGroups,
@@ -251,6 +253,28 @@ export const SchedulerCard: React.FC<SchedulerCardProps> = ({
                 className="w-24 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-white text-center focus:outline-none focus:border-sky-500 dir-ltr font-mono"
               />
               <span className="text-slate-400 text-[11px]">پیام در ۲۴ ساعت</span>
+            </div>
+          </div>
+
+          {/* Hourly Safe Limit Input for Normal Accounts */}
+          <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800 space-y-1.5">
+            <div className="font-semibold text-white flex items-center justify-between">
+              <span>سقف امن ساعتی هر اکانت (Hourly Safe Quota):</span>
+              <span className="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded font-mono">
+                اکانت عادی: ۵ الی ۷ پیام
+              </span>
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="number"
+                min={1}
+                max={30}
+                value={hourlyLimit}
+                onChange={(e) => setHourlyLimit(parseInt(e.target.value, 10) || 6)}
+                onBlur={() => handleSaveScheduler()}
+                className="w-24 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-white text-center focus:outline-none focus:border-sky-500 dir-ltr font-mono"
+              />
+              <span className="text-slate-400 text-[11px]">پیام در هر ساعت برای هر اکانت عادی</span>
             </div>
           </div>
 

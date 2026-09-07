@@ -47,6 +47,8 @@ export interface TelegramAccount {
   enableForGroupBroadcast?: boolean; // One-click flag for Group Promotion Broadcasts
   enableForAnonymousBot?: boolean; // One-click flag for Anonymous Chat Bot Automator
   enableForPvReply?: boolean; // One-click flag for Inbound PV Auto-Reply (پاسخگویی خودکار هوشمند به پیام‌های شخصی در پی‌وی)
+  isPersonalAccount?: boolean; // اکانت شخصی کاربر (حالت ایزوله و امن برای جلوگیری از درگیر شدن گروه‌های شخصی و خانوادگی)
+  strictIsolationMode?: boolean; // حالت فوق‌العاده امن ایزوله: عدم شنود و عدم ارسال پیام در هیچ گروهی خارج از لیست قطعی گروه‌های هدف
   isVerifiedLive?: boolean; // 100% verified active MTProto session
   lastVerifiedAt?: string; // ISO date of last live MTProto health check
   requiresReauth?: boolean; // True if session expired / revoked and needs renewal
@@ -67,6 +69,7 @@ export interface TelegramAccount {
   hourlyLimit?: number;
   dailyLimit?: number;
   hourlySentCount?: number;
+  lastHourResetTime?: number;
   assignedGroupCount?: number; // تعداد گروه‌های تحت مدیریت این اکانت
   shiftStatus?: 'on_shift' | 'cooldown' | 'banned_limited' | 'active_working';
   cooldownUntil?: number;
@@ -89,6 +92,7 @@ export interface TargetGroup {
   id: string;
   title: string;
   usernameOrLink: string; // e.g. @my_group or t.me/group_link or -100123456789
+  telegramChatId?: string; // Numeric ID of Telegram chat/channel (without -100 prefix)
   isActive: boolean;
   memberCount?: number;
   status: 'joined' | 'pending' | 'failed' | 'not_joined' | 'purged_non_persian'; // Overall status
@@ -269,6 +273,7 @@ export interface SchedulerConfig {
   intervalMinutes: number; // Interval in minutes selected by user
   jitterSeconds: number; // Random offset to prevent detection (e.g., 40 to 60 sec)
   dailyLimit: number; // Max messages per day (e.g., 30-50/day)
+  hourlyLimit?: number; // سقف امن ارسال در هر ساعت برای هر اکانت عادی (پیش‌فرض: ۶)
   dailySentCount?: number; // Tracked count for current date
   dailyResetDate?: string; // e.g. '2026-08-11'
   nightModePause: boolean; // Pause between night hours (e.g., 01:00 AM to 07:00 AM)
@@ -916,6 +921,9 @@ export interface GroupPromotionStrategyConfig {
     keywords: string[]; // واژه‌های کلیدی مرتبط با VPN، فیلترشکن، سرعت نت، هوش مصنوعی و...
     replyInGroup: boolean; // ریپلای هوشمند در گروه به کاربر
     replyToUserRepliesInGroup?: boolean; // پاسخگویی مکالمه‌ای هوشمند به ریپلای‌های اعضای گروه به پیام‌های ربات
+    useAnonymousEngineInGroup?: boolean; // استفاده از الگوریتم موتور چت ناشناس در مکالمات گروهی
+    groupReplyAlwaysWithReply?: boolean; // ارسال قطعی و همیشگی همه پیام‌های ربات در گروه‌ها به صورت ریپلای روی پیام کاربر
+    anonymousEngineStrategy?: 'direct_pitch' | 'curiosity_hook' | 'problem_agitation' | 'friend_recommendation'; // استراتژی فروش و مکالمه
     humanChatStyleInGroup?: boolean; // لحن فوق‌العاده کوتاه و کاملاً انسانی (مشابه اتوماسیون چت ناشناس: ۳ الی ۷ کلمه بدون علائم نگارشی)
     maxConsecutiveRepliesPerUser?: number; // سقف تعداد پاسخ‌های متوالی به یک کاربر در گروه (پیش‌فرض: ۵ دور)
     sendBannerInGroupReply?: boolean; // ارسال تصویر و بنر تعرفه‌ها بعد از توضیحات ریپلای در گروه
@@ -925,6 +933,8 @@ export interface GroupPromotionStrategyConfig {
     multiBubblePv?: boolean; // ارسال حبابی و مجزا در پی‌وی (۴ حباب تفکیک‌شده: سلام، گروه، محصول، پشتیبانی)
     multiBubbleDelaySeconds?: number; // تاخیر بین حباب‌ها در پی‌وی (پیش‌فرض: ۱.۵ ثانیه)
     autoReplyInboundPv?: boolean; // پاسخ‌دهی هوشمند به پیام‌های دریافتی از کاربران در پی‌وی و هدایت به پشتیبانی
+    inboundPvScope?: 'all_messages' | 'product_inquiries_only'; // دامنه پاسخگویی در پی‌وی: همه پیام‌های دریافتی جدید یا فقط استعلامات محصول/لید
+    strictTargetGroupIsolation?: boolean; // ایزولاسیون مطلق گروه‌های هدف (ضمانت ۱۰۰٪ که هیچ گروه ناشناس یا شخصی به هیچ عنوان شنود نشده و هیچ پیامی در آن ارسال نگردد)
     supportContactHandle?: string; // آیدی پشتیبانی جهت راهنمایی (پیش‌فرض: @Nova_vpn10 یا آیدی کمپین)
     testTargetUsername?: string; // آیدی هدف برای تست مستقیم (اختیاری)
     groupReplyDelaySeconds: number; // تاخیر طبیعی قبل از ریپلای در گروه (مثلا ۳ تا ۶ ثانیه)
