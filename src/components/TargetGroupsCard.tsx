@@ -406,6 +406,26 @@ export const TargetGroupsCard: React.FC<TargetGroupsCardProps> = ({
     }
   };
 
+  // Ironclad Personal Chat Shield Handler
+  const [isCleaningPersonal, setIsCleaningPersonal] = useState(false);
+  const handleCleanPersonalGroups = async () => {
+    setIsCleaningPersonal(true);
+    try {
+      const res = await fetch('/api/groups/clean-personal-groups', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        showNotification('success', data.message || `سپر محافظتی فعال است: تمام چت‌های شخصی محافظت شدند (${data.remainingCount} گروه هدف فعال).`);
+        if (onRefreshState) await onRefreshState();
+      } else {
+        throw new Error(data.error || 'خطا در اجرای پاکسازی');
+      }
+    } catch (err: any) {
+      showNotification('error', 'خطا در پاکسازی چت‌های شخصی: ' + (err.message || err));
+    } finally {
+      setIsCleaningPersonal(false);
+    }
+  };
+
   // Persian Audience Screening & Blacklist Management
   const [showBlacklistModal, setShowBlacklistModal] = useState(false);
   const [blacklistItems, setBlacklistItems] = useState<string[]>([]);
@@ -933,6 +953,16 @@ export const TargetGroupsCard: React.FC<TargetGroupsCardProps> = ({
           >
             <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
             <span>لیست سیاه ({persianStats?.blacklistCount ?? 0})</span>
+          </button>
+
+          <button
+            onClick={handleCleanPersonalGroups}
+            disabled={isCleaningPersonal}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500/20 to-teal-600/20 hover:from-emerald-500/30 hover:to-teal-600/30 text-emerald-300 font-bold text-xs border border-emerald-500/30 transition-all active:scale-95 disabled:opacity-50 shadow-sm"
+            title="سپر امنیتی فعال: حذف و مسدودسازی ۱۰۰٪ گروه‌های شخصی، دوستانه و خانوادگی از استخر ارسال"
+          >
+            <ShieldCheck className={`w-3.5 h-3.5 ${isCleaningPersonal ? 'animate-spin' : 'text-emerald-400'}`} />
+            <span>{isCleaningPersonal ? 'در حال پاکسازی...' : 'سپر چت‌های شخصی (فعال)'}</span>
           </button>
 
           <button

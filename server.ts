@@ -270,7 +270,49 @@ const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
+const PUBLIC_UPLOADS_DIR = path.join(process.cwd(), 'public', 'uploads');
+if (!fs.existsSync(PUBLIC_UPLOADS_DIR)) {
+  fs.mkdirSync(PUBLIC_UPLOADS_DIR, { recursive: true });
+}
 app.use('/uploads', express.static(UPLOADS_DIR));
+app.use('/uploads', express.static(PUBLIC_UPLOADS_DIR));
+
+// Resilient fallback for /uploads/:filename to guarantee banner images never 404
+app.get('/uploads/:filename', (req, res, next) => {
+  try {
+    const rawName = path.basename(req.params.filename.split('?')[0]);
+    const targetPath = path.join(UPLOADS_DIR, rawName);
+    if (fs.existsSync(targetPath)) {
+      return res.sendFile(targetPath);
+    }
+    const targetPubPath = path.join(PUBLIC_UPLOADS_DIR, rawName);
+    if (fs.existsSync(targetPubPath)) {
+      return res.sendFile(targetPubPath);
+    }
+
+    // Fallback: serve newest or largest valid banner file on server
+    const searchDirs = [UPLOADS_DIR, PUBLIC_UPLOADS_DIR];
+    for (const dir of searchDirs) {
+      if (!fs.existsSync(dir)) continue;
+      const validFiles = fs.readdirSync(dir).filter(f =>
+        f.startsWith('banner_') && !f.endsWith('.png') && (f.endsWith('.jpg') || f.endsWith('.jpeg') || f.endsWith('.webp'))
+      );
+      if (validFiles.length > 0) {
+        const sorted = validFiles.sort((a, b) => {
+          const sA = fs.statSync(path.join(dir, a)).size;
+          const sB = fs.statSync(path.join(dir, b)).size;
+          return sB - sA;
+        });
+        if (sorted[0]) {
+          return res.sendFile(path.join(dir, sorted[0]));
+        }
+      }
+    }
+    next();
+  } catch (err) {
+    next();
+  }
+});
 
 // PRODUCTION HEALTH & OBSERVABILITY PROBES
 app.get('/api/health', (req, res) => {
@@ -345,31 +387,211 @@ const defaultGroupPromotionStrategy: GroupPromotionStrategyConfig = {
     isListeningActive: false,
     keywords: [
       'vpn',
-      'فیلترشکن',
-      'فیلتر شکن',
       'وی پی ان',
       'وی‌پی‌ان',
+      'ویپیان',
+      'فیلترشکن',
+      'فیلتر شکن',
+      'فیلترشکن رایگان',
+      'فیلترشکن خوب',
+      'فیلترشکن سالم',
+      'فیلترشکن قوی',
+      'فیلترشکن پولی',
+      'پروکسی',
+      'proxy',
+      'پروکسی رایگان',
+      'پروکسی خوب',
+      'پروکسی سالم',
       'v2ray',
       'v2rayng',
       'کانفیگ',
-      'پروکسی',
-      'proxy',
-      'سرعت اینترنت',
-      'کندی اینترنت',
+      'کانفیگ رایگان',
+      'کانفیگ سالم',
+      'کانفیگ جدید',
+      'کانفیگ اختصاصی',
+      'کانفیگ v2ray',
+      'کانفیگ vmess',
+      'کانفیگ vless',
+      'کانفیگ reality',
+      'سرور',
+      'سرور رایگان',
+      'سرور سالم',
+      'سرور جدید',
+      'سرور خوب',
+      'لینک کانفیگ',
+      'لینک فیلترشکن',
+      'لینک پروکسی',
+      'کانفیگ میخوام',
+      'کانفیگ داری',
+      'کانفیگ دارید',
+      'کانفیگ بده',
+      'کانفیگ بدید',
+      'پروکسی داری',
+      'پروکسی دارید',
+      'سرور داری',
+      'سرور دارید',
+      'لینک داری',
+      'لینک دارید',
+      'نت ندارم',
+      'اینترنت ندارم',
+      'نت قطع شده',
+      'اینترنت قطع شده',
       'نت قطعه',
-      'قطعی اینترنت',
-      'هوش مصنوعی',
-      'chatgpt',
-      'چت جی پی تی',
-      'claude',
-      'gemini',
-      'اینستا',
-      'اینستاگرام',
-      'یوتیوب',
-      'youtube',
+      'اینترنت قطع',
+      'وصل نمیشه',
+      'کانکت نمیشه',
+      'فیلتر شده',
+      'فیلترینگ',
+      'فیلتره',
+      'ضدفیلتر',
+      'دور زدن فیلتر',
+      'اینترنت ملی',
       'پینگ',
       'کاهش پینگ',
+      'پینگ بالا',
+      'پینگ بالاست',
+      'پینگم بالاست',
+      'پینگ رفته بالا',
+      'پینگ زیاد شده',
+      'پینگ نوسان داره',
+      'پینگ ثابت نیست',
+      'پینگ افتضاحه',
+      'پکت لاس',
+      'packet loss',
+      'لگ',
       'لگ دارم',
+      'لگ میزنم',
+      'کندی اینترنت',
+      'سرعت اینترنت',
+      'قطعی اینترنت',
+      'باز نمیشه',
+      'لود نمیشه',
+      'اینترنت ضعیفه',
+      'نت ضعیفه',
+      'نت داغونه',
+      'اینستاگرام',
+      'اینستا',
+      'اینستا باز نمیشه',
+      'اینستاگرام باز نمیشه',
+      'اینستا لود نمیشه',
+      'اینستاگرام لود نمیشه',
+      'یوتیوب',
+      'youtube',
+      'یوتیوب باز نمیشه',
+      'یوتیوب قطع',
+      'یوتیوب کند',
+      'youtube loading',
+      'chatgpt',
+      'چت جی پی تی',
+      'چت‌جی‌پی‌تی',
+      'chatgpt باز نمیشه',
+      'chatgpt وصل نمیشه',
+      'chatgpt کار نمیکنه',
+      'chatgpt فیلتره',
+      'gemini',
+      'جمینای',
+      'gemini باز نمیشه',
+      'gemini کار نمیکنه',
+      'claude',
+      'کلود',
+      'claude باز نمیشه',
+      'claude کار نمیکنه',
+      'google ai',
+      'google ai studio',
+      'ai studio',
+      'ai.google',
+      'copilot',
+      'مایکروسافت کوپایلت',
+      'کوپایلت',
+      'perplexity',
+      'پرپلکسیتی',
+      'huggingface',
+      'هاگینگ فیس',
+      'midjourney',
+      'میدجرنی',
+      'sora',
+      'سورا',
+      'هوش مصنوعی',
+      'openai',
+      'twitter',
+      'توییتر',
+      'twitter باز نمیشه',
+      'توییتر باز نمیشه',
+      'x',
+      'x باز نمیشه',
+      'ردیت باز نمیشه',
+      'reddit باز نمیشه',
+      'tiktok',
+      'تیک تاک',
+      'tiktok باز نمیشه',
+      'discord',
+      'دیسکورد',
+      'discord باز نمیشه',
+      'تلگرام وصل نمیشه',
+      'واتساپ وصل نمیشه',
+      'tradingview',
+      'تریدینگ ویو',
+      'تریدینگ‌ویو',
+      'بروکر',
+      'بروکر خارجی',
+      'صرافی خارجی',
+      'صرافی',
+      'forex',
+      'فارکس',
+      'فورکس',
+      'crypto',
+      'کریپتو',
+      'binance',
+      'بایننس',
+      'coinbase',
+      'کوین بیس',
+      'کوین‌بیس',
+      'metatrader',
+      'متاتریدر',
+      'mt4',
+      'mt5',
+      'trading',
+      'ترید',
+      'سرور خارجی',
+      'ip خارجی',
+      'آی پی خارجی',
+      'آی‌پی خارجی',
+      'آی پی ثابت',
+      'آی‌پی ثابت',
+      'valorant',
+      'ولورانت',
+      'call of duty',
+      'کالاف',
+      'warzone',
+      'وارزون',
+      'fortnite',
+      'فورتنایت',
+      'pubg',
+      'پابجی',
+      'apex',
+      'اپکس',
+      'league of legends',
+      'league',
+      'minecraft',
+      'ماینکرفت',
+      'سرور اروپا',
+      'سرور آلمان',
+      'سرور آمریکا',
+      'سرور ترکیه',
+      'سرور بازی',
+      'سرور وصل نمیشه',
+      'بازی وصل نمیشه',
+      'آنلاین نمیشه',
+      'بازی تحریم',
+      'سرور تحریم',
+      'اکانت تحریم',
+      'steam',
+      'استیم',
+      'psn',
+      'xbox live',
+      'ایکس باکس',
+      'گوگل فلو',
+      'google flow',
     ],
     replyInGroup: true,
     replyToUserRepliesInGroup: true,
@@ -379,14 +601,16 @@ const defaultGroupPromotionStrategy: GroupPromotionStrategyConfig = {
     sendDirectMessage: true,
     sendBannerInDirectMessage: true,
     friendStylePvTone: true,
-    groupReplyDelaySeconds: 4,
-    groupCooldownMinutes: 5,
-    pvMessageDelaySeconds: 8,
+    groupReplyDelaySeconds: 2,
+    groupCooldownMinutes: 2,
+    pvMessageDelaySeconds: 4,
     userCooldownHours: 24,
     neverRepeatPvToSameUser: true,
     checkTelegramHistoryBeforePv: true,
     totalPvRepeatsPrevented: 0,
-    maxRepliesPerGroupPerHour: 5,
+    maxRepliesPerGroupPerHour: 10,
+    autoSkipLockedRestrictedGroups: true,
+    scannerPresetMode: 'turbo',
     useAiReasoning: true,
     totalMessagesScanned: 0,
     totalLeadsDetected: 0,
@@ -1240,6 +1464,93 @@ if (fs.existsSync(DATA_FILE)) {
         lastJoinTimePerAccount: {},
       },
     };
+
+    // Ensure transient in-progress flags are cleanly reset on server startup
+    if (appState.activeGroupJoinProgress) {
+      appState.activeGroupJoinProgress.isRunning = false;
+      if (Array.isArray(appState.activeGroupJoinProgress.workers)) {
+        appState.activeGroupJoinProgress.workers.forEach(w => {
+          if (w.status === 'joining' || w.status === 'antibot' || w.status === 'preparing') {
+            w.status = 'completed';
+            w.lastAction = 'عملیات خاتمه یافته است.';
+          }
+        });
+      }
+    }
+    if (appState.activeBroadcastProgress) {
+      appState.activeBroadcastProgress.isRunning = false;
+    }
+
+    // Auto-repair and synchronize promotional banner images on startup
+    try {
+      const searchDirs = [UPLOADS_DIR, PUBLIC_UPLOADS_DIR];
+      let bestBannerUrl: string | undefined = undefined;
+      for (const dir of searchDirs) {
+        if (!fs.existsSync(dir)) continue;
+        const validFiles = fs.readdirSync(dir).filter(f =>
+          f.startsWith('banner_') && !f.endsWith('.png') && (f.endsWith('.jpg') || f.endsWith('.jpeg') || f.endsWith('.webp'))
+        );
+        if (validFiles.length > 0) {
+          const sorted = validFiles.sort((a, b) => {
+            const sA = fs.statSync(path.join(dir, a)).size;
+            const sB = fs.statSync(path.join(dir, b)).size;
+            return sB - sA;
+          });
+          if (sorted[0]) {
+            bestBannerUrl = `/uploads/${sorted[0]}`;
+            break;
+          }
+        }
+      }
+
+      if (bestBannerUrl) {
+        let changed = false;
+        if (Array.isArray(appState.campaigns)) {
+          for (const camp of appState.campaigns) {
+            const curImg = camp.imageUrl;
+            if (!curImg || curImg.includes('/uploads/')) {
+              const fname = curImg ? path.basename(curImg.split('?')[0]) : '';
+              const exists = fname && (fs.existsSync(path.join(UPLOADS_DIR, fname)) || fs.existsSync(path.join(PUBLIC_UPLOADS_DIR, fname)));
+              if (!exists) {
+                camp.imageUrl = bestBannerUrl;
+                changed = true;
+                console.log(`[AutoRepair] Synced campaign ${camp.id} banner to valid file: ${bestBannerUrl}`);
+              }
+            }
+          }
+        }
+        if (appState.anonymousAutomator?.instructions?.productPromotion) {
+          const cur = appState.anonymousAutomator.instructions.productPromotion.imageUrl;
+          if (!cur || cur.includes('/uploads/')) {
+            const fname = cur ? path.basename(cur.split('?')[0]) : '';
+            const exists = fname && (fs.existsSync(path.join(UPLOADS_DIR, fname)) || fs.existsSync(path.join(PUBLIC_UPLOADS_DIR, fname)));
+            if (!exists) {
+              appState.anonymousAutomator.instructions.productPromotion.imageUrl = bestBannerUrl;
+              changed = true;
+            }
+          }
+        }
+        if (Array.isArray(appState.anonymousAutomator?.instructions?.products)) {
+          for (const prod of appState.anonymousAutomator.instructions.products) {
+            const cur = prod.bannerImageUrl;
+            if (!cur || cur.includes('/uploads/')) {
+              const fname = cur ? path.basename(cur.split('?')[0]) : '';
+              const exists = fname && (fs.existsSync(path.join(UPLOADS_DIR, fname)) || fs.existsSync(path.join(PUBLIC_UPLOADS_DIR, fname)));
+              if (!exists) {
+                prod.bannerImageUrl = bestBannerUrl;
+                changed = true;
+              }
+            }
+          }
+        }
+        if (changed) {
+          saveData();
+        }
+      }
+    } catch (bannerRepairErr) {
+      console.error('Non-blocking banner repair error:', bannerRepairErr);
+    }
+
     saveData();
     if (!appState.credentials.apiId || appState.credentials.apiId === '22239448') {
       appState.credentials.apiId = DEFAULT_API_ID;
@@ -1277,17 +1588,24 @@ function syncAccountsState() {
   // Ensure all accounts have necessary flags, personas, fingerprints and quotas
   for (let idx = 0; idx < appState.accounts.length; idx++) {
     const acc = appState.accounts[idx];
-    if (acc.enableForGroupBroadcast === undefined) acc.enableForGroupBroadcast = true;
+    const isAmin = (acc.userProfile?.username && acc.userProfile.username.toLowerCase().includes('amin')) ||
+                   (acc.phoneNumber && acc.phoneNumber.includes('9017295436'));
+    if (acc.isPersonalAccount === undefined) {
+      acc.isPersonalAccount = Boolean(isAmin);
+    } else if (isAmin) {
+      acc.isPersonalAccount = true;
+    }
+    if (acc.isPersonalAccount) {
+      acc.strictIsolationMode = true;
+      if (acc.enableForGroupBroadcast === undefined) {
+        acc.enableForGroupBroadcast = false; // Safe default on first setup, but respects user's explicit setting
+      }
+    } else {
+      if (acc.enableForGroupBroadcast === undefined) acc.enableForGroupBroadcast = true;
+      if (acc.strictIsolationMode === undefined) acc.strictIsolationMode = false;
+    }
     if (acc.enableForAnonymousBot === undefined) acc.enableForAnonymousBot = true;
     if (acc.enableForPvReply === undefined) acc.enableForPvReply = true;
-    if (acc.isPersonalAccount === undefined) {
-      const isAmin = (acc.userProfile?.username && acc.userProfile.username.toLowerCase().includes('amin')) ||
-                     (acc.phoneNumber && acc.phoneNumber.includes('9017295436'));
-      acc.isPersonalAccount = Boolean(isAmin);
-    }
-    if (acc.strictIsolationMode === undefined) {
-      acc.strictIsolationMode = acc.isPersonalAccount ? true : false;
-    }
     if (acc.isActive === undefined) acc.isActive = true;
     if (acc.status === undefined) acc.status = 'active';
     if (!acc.personaTone) {
@@ -1358,6 +1676,24 @@ function syncAccountsState() {
     }
   }
 
+  // Auto-heal accounts whose Telegram flood_wait or peer_flood timers have elapsed
+  const nowTs = Date.now();
+  if (Array.isArray(appState.accounts)) {
+    for (const acc of appState.accounts) {
+      if (acc.status === 'flood_wait') {
+        if (!acc.floodWaitUntil || acc.floodWaitUntil <= nowTs) {
+          acc.status = 'connected';
+          acc.shiftStatus = 'active_working';
+          acc.statusMessage = 'متصل و آماده به کار (محدودیت قبلی تلگرام پایان یافت)';
+          delete acc.floodWaitUntil;
+        }
+      }
+      if (acc.peerFloodUntil && acc.peerFloodUntil <= nowTs) {
+        delete acc.peerFloodUntil;
+      }
+    }
+  }
+
   if (!appState.activeAccountId && appState.accounts.length > 0) {
     appState.activeAccountId = appState.accounts[0].id;
   }
@@ -1366,6 +1702,9 @@ function syncAccountsState() {
 // Initial Sync
 syncAccountsState();
 purgeInvalidGroupsFromState();
+
+// Loop prevention map for test messages between user's own accounts
+const internalTestPvTurnsMap = new Map<string, { count: number; lastTs: number }>();
 
 // Helper: Check if an entity or phone/username belongs to our own connected accounts (prevents self-chat loops)
 function isInternalSystemAccount(senderId?: string | number, senderUsername?: string, senderPhone?: string): boolean {
@@ -1413,6 +1752,58 @@ function isVpnOrProductInquiry(text: string): boolean {
   return vpnKeywords.some(kw => lower.includes(kw));
 }
 
+// ----------------------------------------------------------------------------
+// IRONCLAD SHIELD: PERSONAL & FAMILY CHATS ZERO-TOLERANCE PROTECTION
+// ----------------------------------------------------------------------------
+const PERSONAL_CHAT_KEYWORDS = [
+  'خانواده', 'فامیل', 'فامیلی', 'دوستان', 'دوستانه', 'مهمونی', 'مهمانی', 'تولد',
+  'ویلا', 'سفر', 'شمال', 'آسایشگاه', 'دورهمی', 'اکیپ', 'گپ شخصی', 'چت شخصی',
+  'پارتی', 'خاله', 'عمه', 'عمو', 'دایی', 'مامان', 'بابا', 'خواهر', 'برادر',
+  'بچه‌های', 'بچه های', 'هیئت', 'جلسه', 'صمیمانه', 'یادگاری', 'همکلاسی',
+  'دانشگاه', 'مدرسه', 'کلاس', 'همکاران', 'شرکت', 'رفقا', 'فامیلا',
+  'family', 'friends', 'friendly', 'private', 'party', 'birthday', 'vacation',
+  'trip', 'inner circle', 'chill', 'bro', 'homies', 'personal'
+];
+
+function isPersonalOrForbiddenGroup(group: any): boolean {
+  if (!group) return true;
+  if (group.isPersonalProtected) return true;
+  if (group.category === 'همگام‌سازی تلگرام' || group.category === 'شخصی') return true;
+
+  const title = String(group.title || '').trim().toLowerCase();
+  const link = String(group.usernameOrLink || '').trim().toLowerCase();
+  const combined = `${title} ${link}`;
+
+  for (const kw of PERSONAL_CHAT_KEYWORDS) {
+    if (combined.includes(kw)) return true;
+  }
+
+  // If group link has NO public username (@...) and NO public t.me link:
+  // (e.g. it's only a raw numeric Telegram ID like -5039096350 or -1001934297001)
+  const isPublicUsername = link.startsWith('@');
+  const isPublicLink = link.includes('t.me/');
+  if (!isPublicUsername && !isPublicLink) {
+    // This is an internal/private chat dialog from an account, NOT a public marketing target group!
+    return true;
+  }
+
+  return false;
+}
+
+function cleanPersonalAndDiscoveredGroups(): { removedCount: number; remainingCount: number } {
+  if (!appState.groups || !Array.isArray(appState.groups)) {
+    return { removedCount: 0, remainingCount: 0 };
+  }
+  const beforeCount = appState.groups.length;
+  appState.groups = appState.groups.filter(g => !isPersonalOrForbiddenGroup(g));
+  const removedCount = beforeCount - appState.groups.length;
+  if (removedCount > 0) {
+    saveData();
+    console.log(`🛡️ [سپر امنیتی چت‌های شخصی] تعداد ${removedCount} گروه شخصی/دیالوگ کشف‌شده با موفقیت پاکسازی شد.`);
+  }
+  return { removedCount, remainingCount: appState.groups.length };
+}
+
 // Helper: Filter groups based on Google AI Studio instance sharding
 function getShardedActiveGroups(): TargetGroup[] {
   const allActive = (appState.groups || []).filter(g => {
@@ -1420,6 +1811,8 @@ function getShardedActiveGroups(): TargetGroup[] {
     if (g.status === 'purged_non_persian' || g.readinessStatus === 'non_persian_purged') return false;
     if (g.isPersianVerified === false) return false;
     if (isBlacklistedNonPersianTarget(g.usernameOrLink) || isBlacklistedNonPersianTarget(g.title)) return false;
+    // IRONCLAD SHIELD: Exclude any personal, family, friendly or private chat group
+    if (isPersonalOrForbiddenGroup(g)) return false;
     return true;
   });
   const sharding = appState.instanceSharding;
@@ -2512,6 +2905,10 @@ app.post('/api/upload-banner', (req, res) => {
       const uniqueFilename = `banner_${Date.now()}_${Math.random().toString(36).substring(2, 7)}${ext}`;
       const filePath = path.join(UPLOADS_DIR, uniqueFilename);
       fs.writeFileSync(filePath, buffer);
+      // Also sync copy to public/uploads for double resilience
+      try {
+        fs.writeFileSync(path.join(PUBLIC_UPLOADS_DIR, uniqueFilename), buffer);
+      } catch (cpErr) {}
       publicUrl = `/uploads/${uniqueFilename}`;
     }
 
@@ -2544,11 +2941,18 @@ app.post('/api/upload-banner', (req, res) => {
       }
     }
 
-    // Apply to Group Broadcast Campaign if explicitly requested with campaignId
-    if (campaignId && Array.isArray(appState.campaigns)) {
-      const camp = appState.campaigns.find((c: any) => c.id === campaignId);
-      if (camp) {
-        camp.imageUrl = publicUrl;
+    // Apply to Group Broadcast Campaign (sync active or specified campaign)
+    if (Array.isArray(appState.campaigns) && appState.campaigns.length > 0) {
+      if (campaignId) {
+        const camp = appState.campaigns.find((c: any) => c.id === campaignId);
+        if (camp) {
+          camp.imageUrl = publicUrl;
+        }
+      } else if (target === 'campaign' || !target) {
+        const activeCamp = appState.campaigns.find((c: any) => c.isActive) || appState.campaigns[0];
+        if (activeCamp) {
+          activeCamp.imageUrl = publicUrl;
+        }
       }
     }
 
@@ -3611,28 +4015,38 @@ async function resolveAndJoinGroup(client: any, rawInput: string) {
 
 // Helper Function: Process Image URL or Base64 into temporary file for GramJS upload
 async function getImageFilePathForTelegram(imageUrl: string): Promise<string | undefined> {
-  if (!imageUrl || typeof imageUrl !== 'string') return undefined;
+  if (!imageUrl || typeof imageUrl !== 'string') {
+    // If no imageUrl provided, try to find default banner on server
+    return getFallbackBannerPath();
+  }
 
   try {
     const trimmed = imageUrl.trim();
 
-    // 1. Check direct file in UPLOADS_DIR if it references an upload
+    // 1. Check direct file in UPLOADS_DIR or PUBLIC_UPLOADS_DIR if it references an upload
     if (trimmed.includes('banner_') || trimmed.includes('/uploads/') || trimmed.startsWith('uploads/')) {
       const filename = path.basename(trimmed.split('?')[0]);
       const directUploadPath = path.join(UPLOADS_DIR, filename);
-      if (fs.existsSync(directUploadPath)) {
+      if (fs.existsSync(directUploadPath) && fs.statSync(directUploadPath).size > 100) {
         return directUploadPath;
+      }
+      const directPubPath = path.join(PUBLIC_UPLOADS_DIR, filename);
+      if (fs.existsSync(directPubPath) && fs.statSync(directPubPath).size > 100) {
+        return directPubPath;
       }
       const cleanRel = trimmed.startsWith('/') ? trimmed.slice(1) : trimmed;
       const localFile = path.join(process.cwd(), cleanRel.split('?')[0]);
-      if (fs.existsSync(localFile)) {
+      if (fs.existsSync(localFile) && fs.statSync(localFile).size > 100) {
         return localFile;
       }
+      // If specific filename was not found, fallback to newest valid banner
+      const fallback = getFallbackBannerPath();
+      if (fallback) return fallback;
     }
 
     // 2. If it's already an existing local file on disk
     const cleanPath = trimmed.split('?')[0];
-    if ((cleanPath.startsWith('/') || cleanPath.startsWith('./')) && fs.existsSync(cleanPath)) {
+    if ((cleanPath.startsWith('/') || cleanPath.startsWith('./')) && fs.existsSync(cleanPath) && fs.statSync(cleanPath).size > 100) {
       return cleanPath;
     }
 
@@ -3643,7 +4057,7 @@ async function getImageFilePathForTelegram(imageUrl: string): Promise<string | u
     if (trimmed.startsWith('data:image') || trimmed.includes(';base64,')) {
       const parts = trimmed.split(',');
       const base64Data = parts[1] || parts[0];
-      if (!base64Data) return undefined;
+      if (!base64Data) return getFallbackBannerPath();
       const buffer = Buffer.from(base64Data, 'base64');
       fs.writeFileSync(tmpPath, buffer);
       return tmpPath;
@@ -3653,22 +4067,52 @@ async function getImageFilePathForTelegram(imageUrl: string): Promise<string | u
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
-      const res = await fetch(trimmed, {
-        signal: controller.signal,
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-      });
-      clearTimeout(timeoutId);
+      try {
+        const res = await fetch(trimmed, {
+          signal: controller.signal,
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+        });
+        clearTimeout(timeoutId);
 
-      if (res.ok) {
-        const arrayBuffer = await res.arrayBuffer();
-        fs.writeFileSync(tmpPath, Buffer.from(arrayBuffer));
-        return tmpPath;
+        if (res.ok) {
+          const arrayBuffer = await res.arrayBuffer();
+          fs.writeFileSync(tmpPath, Buffer.from(arrayBuffer));
+          return tmpPath;
+        }
+      } catch (fetchErr) {
+        clearTimeout(timeoutId);
+        console.warn('Failed to fetch remote image URL, trying fallback banner:', fetchErr);
       }
     }
   } catch (e) {
     console.error('Failed to prepare image file for Telegram upload:', e);
   }
 
+  // Final fallback to any valid banner on disk
+  return getFallbackBannerPath();
+}
+
+// Helper: Get highest priority existing banner image file from disk
+function getFallbackBannerPath(): string | undefined {
+  try {
+    const searchDirs = [UPLOADS_DIR, PUBLIC_UPLOADS_DIR];
+    for (const dir of searchDirs) {
+      if (!fs.existsSync(dir)) continue;
+      const validFiles = fs.readdirSync(dir).filter(f =>
+        f.startsWith('banner_') && !f.endsWith('.png') && (f.endsWith('.jpg') || f.endsWith('.jpeg') || f.endsWith('.webp'))
+      );
+      if (validFiles.length > 0) {
+        const sorted = validFiles.sort((a, b) => {
+          const sA = fs.statSync(path.join(dir, a)).size;
+          const sB = fs.statSync(path.join(dir, b)).size;
+          return sB - sA;
+        });
+        if (sorted[0] && fs.statSync(path.join(dir, sorted[0])).size > 500) {
+          return path.join(dir, sorted[0]);
+        }
+      }
+    }
+  } catch (err) {}
   return undefined;
 }
 
@@ -4656,8 +5100,12 @@ async function sendCampaignWithRetry(
         sendOptions.replyTo = targetReplyTo;
       }
 
-      if (tempImgPath && fs.existsSync(tempImgPath)) {
-        let fileSource: any = cachedHandle || tempImgPath;
+      const resolvedImgPath = (tempImgPath && fs.existsSync(tempImgPath) && fs.statSync(tempImgPath).size > 100)
+        ? tempImgPath
+        : getFallbackBannerPath();
+
+      if (resolvedImgPath && fs.existsSync(resolvedImgPath)) {
+        let fileSource: any = cachedHandle || resolvedImgPath;
         if (cachedHandle) {
           mediaFromCache = true;
         }
@@ -4675,7 +5123,7 @@ async function sendCampaignWithRetry(
             cachedHandle = null;
             mediaFromCache = false;
             sentResult = await client.sendFile(peer, {
-              file: tempImgPath,
+              file: resolvedImgPath,
               ...sendOptions,
             });
           } else if (
@@ -5706,75 +6154,11 @@ async function syncTelegramRealtimeMemberships(targetAccountIds?: string[]): Pro
         rawIdSet.add(`-${idStr}`);
       }
 
-      // Auto-discover new group into appState.groups if not present
-      let usernameOrLink = '';
-      if (entity.username) {
-        usernameOrLink = '@' + entity.username;
-      } else if (entity.id) {
-        const idStr = entity.id.toString();
-        usernameOrLink = idStr.startsWith('-') ? idStr : (entity.megagroup ? `-100${idStr}` : `-${idStr}`);
-      }
-
-      if (usernameOrLink) {
-        // Check for 100% Persian & Iranian Audience
-        const isEnforcePersian = appState.groupJoinStrategy?.enforcePersianIranianOnly !== false;
-        const combinedMeta = `${title} ${usernameOrLink}`;
-        const hasForeignKeywords = hasExplicitForeignKeywords(combinedMeta);
-        const hasForbiddenScript = containsForbiddenForeignScript(combinedMeta).forbidden;
-        const isArabicNonFa = isPureArabicNonPersian(combinedMeta);
-
-        if (isEnforcePersian && (hasForeignKeywords || hasForbiddenScript || isArabicNonFa)) {
-          console.log(`[Auto-Purge Non-Persian Dialog] Leaving and clearing non-Persian group: "${title}" (${usernameOrLink})`);
-          addLog(
-            'warning',
-            `🚫 [پاکسازی خودکار تلگرام] گروه غیرایرانی "${title}" (${usernameOrLink}) شناسایی شد و به طور کامل از تلگرام لفت داده و چت آن پاک شد.`
-          );
-          try {
-            await leaveGroupAndClearHistory(client, entity);
-          } catch (leaveErr: any) {
-            console.warn('Leave dialog error:', leaveErr?.message || leaveErr);
-          }
-          // Mark existing group in DB if present
-          const existing = appState.groups.find(
-            g => g.usernameOrLink.toLowerCase() === usernameOrLink.toLowerCase() ||
-                 (g.title && g.title.trim().toLowerCase() === title.toLowerCase())
-          );
-          if (existing) {
-            existing.isActive = false;
-            existing.status = 'purged_non_persian';
-            existing.membershipStatus = 'restricted';
-            existing.readinessStatus = 'non_persian_purged';
-            existing.isPersianVerified = false;
-            existing.nonPersianPurgedAt = new Date().toISOString();
-            existing.errorMessage = 'گروه غیرفارسی/غیرایرانی تشخیص داده شد و از تلگرام پاک شد.';
-          }
-          continue;
-        }
-
-        const existing = appState.groups.find(
-          g => g.usernameOrLink.toLowerCase() === usernameOrLink.toLowerCase() ||
-               (g.title && g.title.trim().toLowerCase() === title.toLowerCase())
-        );
-
-        if (!existing) {
-          const newGrp: TargetGroup = {
-            id: 'grp_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
-            title: title || 'گروه تلگرام',
-            usernameOrLink: usernameOrLink,
-            isActive: true,
-            memberCount: entity.participantsCount || undefined,
-            status: 'joined',
-            membershipStatus: 'joined',
-            joinedAccountIds: [account.id],
-            joinedAccountPhones: [account.phoneNumber],
-            isPersianVerified: hasPersianScriptOrTokens(title),
-            languageDetected: hasPersianScriptOrTokens(title) ? 'fa' : undefined,
-            category: 'همگام‌سازی تلگرام',
-          };
-          appState.groups.push(newGrp);
-          totalDiscoveredGroupsAdded++;
-        }
-      }
+      // STRICT PRIVACY & PERSONAL PROTECTION SHIELD:
+      // We NEVER auto-discover or auto-import arbitrary Telegram dialogs into appState.groups!
+      // appState.groups represents the user's explicit, authorized marketing targets only.
+      // Private, family, friendly, and personal dialogs from connected accounts are strictly
+      // ignored and untouched to protect the user's privacy and dignity.
     }
 
     accountMembershipSets.set(account.id, {
@@ -5813,7 +6197,7 @@ async function syncTelegramRealtimeMemberships(targetAccountIds?: string[]): Pro
           isMember = true;
         } else if (cleanTarget && (setObj.rawIds.has(cleanTarget) || setObj.rawIds.has(cleanTarget.replace(/^-100/, '')))) {
           isMember = true;
-        } else if (cleanTitle && setObj.titles.has(cleanTitle)) {
+        } else if (cleanTitle && cleanTitle.length >= 6 && !PERSONAL_CHAT_KEYWORDS.some(kw => cleanTitle.includes(kw)) && setObj.titles.has(cleanTitle)) {
           isMember = true;
         }
       }
@@ -6140,6 +6524,7 @@ async function runDripJoinBackgroundStep() {
         g => g.assignedAccountId === account.id &&
              (!g.joinedAccountIds || !g.joinedAccountIds.includes(account.id)) &&
              g.isActive &&
+             !isPersonalOrForbiddenGroup(g) &&
              g.status !== 'purged_non_persian' &&
              g.membershipStatus !== 'failed'
       );
@@ -6350,8 +6735,8 @@ async function startSmartGroupJoinEngine(options?: {
     return { success: false, message: 'هیچ اکانت فعالی برای عضویت در دسترس نیست.' };
   }
 
-  // Determine groups that need joining
-  let targetGroups = appState.groups.filter(g => g.isActive);
+  // Determine groups that need joining (excluding any personal or non-target chats)
+  let targetGroups = appState.groups.filter(g => g.isActive && !isPersonalOrForbiddenGroup(g));
   if (options?.targetGroupIds && options.targetGroupIds.length > 0) {
     targetGroups = targetGroups.filter(g => options.targetGroupIds!.includes(g.id));
   } else {
@@ -6670,16 +7055,30 @@ async function startSmartGroupJoinEngine(options?: {
   return { success: true, message: 'عملیات عضویت هوشمند گروه‌ها آغاز گردید.', activeProgress: appState.activeGroupJoinProgress };
 }
 
-function stopSmartGroupJoinEngine(): { success: boolean; message: string } {
-  if (!isGroupJoinRunning) {
-    return { success: false, message: 'هیچ عملیات عضویتی در حال حاضر در حال اجرا نیست.' };
-  }
+function stopSmartGroupJoinEngine(): { success: boolean; message: string; progress?: any } {
   isGroupJoinCancellationRequested = true;
+  isGroupJoinRunning = false;
+  isDripJoinStepRunning = false;
+  
   if (appState.activeGroupJoinProgress) {
     appState.activeGroupJoinProgress.isRunning = false;
+    if (Array.isArray(appState.activeGroupJoinProgress.workers)) {
+      appState.activeGroupJoinProgress.workers.forEach(w => {
+        if (w.status !== 'completed' && w.status !== 'error') {
+          w.status = 'completed';
+          w.lastAction = 'توسط کاربر متوقف گردید.';
+        }
+      });
+    }
   }
-  addLog('warning', '[توقف عضویت] درخواست توقف فرآیند عضویت هوشمند توسط کاربر صادر گردید.');
-  return { success: true, message: 'دستور توقف فرآیند عضویت صادر شد.' };
+
+  if (appState.dripJoinConfig && appState.dripJoinConfig.enabled) {
+    appState.dripJoinConfig.enabled = false;
+  }
+
+  saveData();
+  addLog('warning', '[توقف عضویت] درخواست توقف فرآیند عضویت هوشمند با موفقیت ثبت و اجرا شد.');
+  return { success: true, message: 'دستور توقف فرآیند عضویت هوشمند با موفقیت صادر و اعمال شد.', progress: appState.activeGroupJoinProgress };
 }
 
 interface SponsorTarget {
@@ -7545,8 +7944,19 @@ async function executeBroadcast(isManualTrigger = false) {
       return { success: false, message: 'گروه هدفی فعال نیست.' };
     }
 
-    // 4. Apply Promotional Group Filter if enabled
+    // 4. Apply Filters
     let targetGroupsToProcess = activeGroups;
+
+    // 4.0 IRONCLAD PERSONAL & FAMILY CHAT SHIELD (سپر ضد نفوذ به گروه‌های شخصی، دوستانه و خانوادگی)
+    const personalChats = targetGroupsToProcess.filter(g => isPersonalOrForbiddenGroup(g));
+    if (personalChats.length > 0) {
+      targetGroupsToProcess = targetGroupsToProcess.filter(g => !isPersonalOrForbiddenGroup(g));
+      addLog(
+        'warning',
+        `🛡️ [سپر امنیتی چت‌های شخصی] تعداد ${personalChats.length} گروه شخصی یا غیرمجاز شناسایی و مسدود شدند تا تحت هیچ شرایطی پیامی به آنها ارسال نشود.`
+      );
+    }
+
     if (appState.scheduler.onlyPromotionalGroups) {
       targetGroupsToProcess = activeGroups.filter(g => {
         const cat = (g.category || '').toLowerCase();
@@ -7735,6 +8145,45 @@ async function executeBroadcast(isManualTrigger = false) {
     };
 
     function claimNextGroupForWorker(workerAccId: string): TargetGroup | null {
+      const workerAccount = (appState.accounts || []).find(a => a.id === workerAccId);
+      const isPersonal = Boolean(workerAccount?.isPersonalAccount || workerAccount?.strictIsolationMode);
+
+      // Set of all personal account IDs to protect from other workers
+      const personalAccountIds = new Set(
+        (appState.accounts || [])
+          .filter(a => a.isPersonalAccount || a.strictIsolationMode)
+          .map(a => a.id)
+      );
+
+      // 🛡️ STRICT ISOLATION FOR PERSONAL ACCOUNT:
+      // If this worker is a personal account, it is STRICTLY FORBIDDEN from touching any group
+      // other than the ones explicitly assigned to it (g.assignedAccountId === workerAccId).
+      if (isPersonal) {
+        // 1. Highest priority: Joined groups assigned explicitly to this personal account
+        for (const g of targetGroupsToProcess) {
+          if (!claimedGroupIds.has(g.id) && !completedGroupIds.has(g.id)) {
+            if (g.assignedAccountId === workerAccId && g.joinedAccountIds && g.joinedAccountIds.includes(workerAccId)) {
+              claimedGroupIds.add(g.id);
+              return g;
+            }
+          }
+        }
+        // 2. Medium priority: Unjoined groups assigned explicitly to this personal account
+        for (const g of targetGroupsToProcess) {
+          if (!claimedGroupIds.has(g.id) && !completedGroupIds.has(g.id)) {
+            if (g.assignedAccountId === workerAccId) {
+              claimedGroupIds.add(g.id);
+              return g;
+            }
+          }
+        }
+        // Personal account can NEVER touch unassigned or other accounts' groups
+        return null;
+      }
+
+      // 🛡️ NORMAL WORKER ACCOUNT (Voss / Nova):
+      // Must NEVER claim groups assigned to any Personal Account!
+
       // 1. Highest priority: Groups where this account is the assigned territory owner AND a confirmed joined member
       for (const g of targetGroupsToProcess) {
         if (!claimedGroupIds.has(g.id) && !completedGroupIds.has(g.id)) {
@@ -7744,16 +8193,8 @@ async function executeBroadcast(isManualTrigger = false) {
           }
         }
       }
-      // 2. High priority: Groups where this account is a confirmed joined member in Telegram
-      for (const g of targetGroupsToProcess) {
-        if (!claimedGroupIds.has(g.id) && !completedGroupIds.has(g.id)) {
-          if (g.joinedAccountIds && g.joinedAccountIds.includes(workerAccId)) {
-            claimedGroupIds.add(g.id);
-            return g;
-          }
-        }
-      }
-      // 3. Medium priority: Unjoined groups explicitly assigned to this account's territory
+
+      // 2. High priority: Groups explicitly assigned to this account's territory
       for (const g of targetGroupsToProcess) {
         if (!claimedGroupIds.has(g.id) && !completedGroupIds.has(g.id)) {
           if (g.assignedAccountId === workerAccId) {
@@ -7762,12 +8203,28 @@ async function executeBroadcast(isManualTrigger = false) {
           }
         }
       }
-      // 4. Territory Guard: If failover redistribution is disabled, do NOT claim other accounts' groups!
+
+      // 3. Shared pool: Groups where this account is joined AND the group does NOT belong to a personal account
+      for (const g of targetGroupsToProcess) {
+        if (!claimedGroupIds.has(g.id) && !completedGroupIds.has(g.id)) {
+          if (g.assignedAccountId && personalAccountIds.has(g.assignedAccountId)) {
+            continue; // Never steal a personal account's group
+          }
+          if (g.joinedAccountIds && g.joinedAccountIds.includes(workerAccId)) {
+            claimedGroupIds.add(g.id);
+            return g;
+          }
+        }
+      }
+
+      // 4. Territory Guard: If failover redistribution is enabled, claim unassigned groups (NEVER personal groups!)
       const enableRedistribution = appState.scheduler?.antiBot?.enableFailoverRedistribution ?? false;
       if (enableRedistribution) {
-        // Fallback: claim next unassigned unclaimed group
         for (const g of targetGroupsToProcess) {
           if (!claimedGroupIds.has(g.id) && !completedGroupIds.has(g.id)) {
+            if (g.assignedAccountId && personalAccountIds.has(g.assignedAccountId)) {
+              continue; // Never touch personal groups
+            }
             claimedGroupIds.add(g.id);
             return g;
           }
@@ -7873,6 +8330,25 @@ async function executeBroadcast(isManualTrigger = false) {
           break;
         }
 
+        // 🛡️ Extra Safety Guard: Never send to personal or non-target groups
+        if (isPersonalOrForbiddenGroup(group)) {
+          markGroupAsCompleted(group);
+          addLog('warning', `🛡️ [سپر امنیتی چت‌های شخصی] گروه "${group.title}" شخصی یا خانوادگی تشخیص داده شد و فوراً از صف ارسال مسدود گردید.`);
+          continue;
+        }
+
+        // 🛡️ Secondary Personal Account Isolation Guard:
+        if (account.isPersonalAccount || account.strictIsolationMode) {
+          if (group.assignedAccountId !== account.id) {
+            markGroupAsCompleted(group);
+            addLog(
+              'error',
+              `🛡️ [حفاظت از اکانت شخصی] اکانت شخصی (${account.phoneNumber}) فقط و فقط به گروه‌های اختصاصی خود پیام ارسال می‌کند. گروه "${group.title}" به دلیل عدم تخصیص به این اکانت متوقف شد.`
+            );
+            continue;
+          }
+        }
+
         if (isBroadcastCancellationRequested) {
           releaseGroupBackToSharedQueue(group, 'توقف دستی');
           break;
@@ -7947,7 +8423,10 @@ async function executeBroadcast(isManualTrigger = false) {
           const allowBanner = (activeStrategy === 'periodic_broadcast' || activeStrategy === 'hybrid_both')
             ? (strat1?.includeBanner !== false)
             : true;
-          const campImgPath = (allowBanner && campaign.imageUrl) ? campaignImagePaths.get(campaign.id) : undefined;
+          let campImgPath = allowBanner ? (campaignImagePaths.get(campaign.id) || await getImageFilePathForTelegram(campaign.imageUrl || '')) : undefined;
+          if (allowBanner && !campImgPath) {
+            campImgPath = getFallbackBannerPath();
+          }
 
           if (verification.isClear) {
             if (workerProgress) {
@@ -8403,7 +8882,9 @@ async function executeBroadcast(isManualTrigger = false) {
 // 15. Telegram Groups Auto-Sync & Real-Time Membership Sync Endpoints
 app.post('/api/telegram/sync-groups', async (req, res) => {
   try {
+    cleanPersonalAndDiscoveredGroups();
     const result = await syncTelegramRealtimeMemberships();
+    cleanPersonalAndDiscoveredGroups();
     res.json({ success: true, ...result, groups: appState.groups });
   } catch (err: any) {
     console.error('Group sync error:', err);
@@ -8413,12 +8894,30 @@ app.post('/api/telegram/sync-groups', async (req, res) => {
 
 app.post('/api/groups/sync-realtime-memberships', async (req, res) => {
   try {
+    cleanPersonalAndDiscoveredGroups();
     const { accountIds } = req.body || {};
     const result = await syncTelegramRealtimeMemberships(accountIds);
+    cleanPersonalAndDiscoveredGroups();
     res.json({ success: true, ...result, groups: appState.groups });
   } catch (err: any) {
     console.error('Realtime membership sync error:', err);
     res.status(500).json({ error: translateTgError(err) });
+  }
+});
+
+// 15-b. Strict Personal Groups Purge Endpoint
+app.post('/api/groups/clean-personal-groups', (req, res) => {
+  try {
+    const { removedCount, remainingCount } = cleanPersonalAndDiscoveredGroups();
+    res.json({
+      success: true,
+      message: `سپر امنیتی با موفقیت اعمال شد. (${removedCount} گروه شخصی حذف شد، ${remainingCount} گروه هدف فعال باقی ماند)`,
+      removedCount,
+      remainingCount,
+      groups: appState.groups
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -10081,9 +10580,21 @@ app.post('/api/groups/verify-persistence', async (req, res) => {
 
 // 18. Export Data Backup Endpoints
 const handleExportBackup = (req: express.Request, res: express.Response) => {
+  // Ensure we persist the latest memory state to disk first
+  saveData();
+  
+  // Clone appState and sanitize transient operational flags before exporting
+  const cleanExportState = JSON.parse(JSON.stringify(appState));
+  if (cleanExportState.activeGroupJoinProgress) {
+    cleanExportState.activeGroupJoinProgress.isRunning = false;
+  }
+  if (cleanExportState.activeBroadcastProgress) {
+    cleanExportState.activeBroadcastProgress.isRunning = false;
+  }
+
   res.setHeader('Content-Type', 'application/json');
-  res.setHeader('Content-Disposition', `attachment; filename=telegram_promoter_backup_${new Date().toISOString().slice(0, 10)}.json`);
-  res.send(JSON.stringify(appState, null, 2));
+  res.setHeader('Content-Disposition', `attachment; filename="telegram_promoter_backup_${new Date().toISOString().slice(0, 10)}.json"`);
+  res.send(JSON.stringify(cleanExportState, null, 2));
 };
 app.get('/api/backup/export', handleExportBackup);
 app.get('/api/download-backup', handleExportBackup);
@@ -10096,56 +10607,115 @@ const handleImportBackup = (req: express.Request, res: express.Response) => {
     return;
   }
 
-  if (Array.isArray(data.groups)) {
-    appState.groups = data.groups;
-  }
-  if (Array.isArray(data.campaigns)) {
-    appState.campaigns = data.campaigns;
-  }
-  if (data.scheduler) {
-    appState.scheduler = { ...appState.scheduler, ...data.scheduler };
-  }
-  if (data.credentials) {
-    appState.credentials = { ...appState.credentials, ...data.credentials };
-  }
-  if (data.anonymousAutomator) {
-    appState.anonymousAutomator = normalizeAnonymousAutomatorConfig({
-      ...appState.anonymousAutomator,
-      ...data.anonymousAutomator,
-      products: data.anonymousAutomator.products || data.anonymousAutomator.instructions?.products,
-      activeProductId: data.anonymousAutomator.activeProductId || data.anonymousAutomator.instructions?.activeProductId,
-      instructions: {
-        ...(appState.anonymousAutomator?.instructions || {}),
-        ...(data.anonymousAutomator.instructions || {}),
-        products: data.anonymousAutomator.instructions?.products || data.anonymousAutomator.products,
-        activeProductId: data.anonymousAutomator.instructions?.activeProductId || data.anonymousAutomator.activeProductId,
-        savedPrompts: Array.isArray(data.anonymousAutomator.instructions?.savedPrompts)
-          ? data.anonymousAutomator.instructions.savedPrompts
-          : (appState.anonymousAutomator?.instructions?.savedPrompts || []),
-      },
+  try {
+    if (Array.isArray(data.groups)) {
+      appState.groups = data.groups;
+    }
+    if (Array.isArray(data.campaigns)) {
+      appState.campaigns = data.campaigns;
+    }
+    if (data.scheduler) {
+      appState.scheduler = { ...appState.scheduler, ...data.scheduler };
+    }
+    if (data.credentials) {
+      appState.credentials = { ...appState.credentials, ...data.credentials };
+    }
+    if (Array.isArray(data.accounts)) {
+      appState.accounts = data.accounts;
+    }
+    if (data.activeAccountId) {
+      appState.activeAccountId = data.activeAccountId;
+    }
+    if (data.groupPromotionStrategy) {
+      appState.groupPromotionStrategy = {
+        ...defaultGroupPromotionStrategy,
+        ...data.groupPromotionStrategy,
+        strategy1: {
+          ...defaultGroupPromotionStrategy.strategy1,
+          ...(data.groupPromotionStrategy?.strategy1 || {}),
+        },
+        strategy2: {
+          ...defaultGroupPromotionStrategy.strategy2,
+          ...(data.groupPromotionStrategy?.strategy2 || {}),
+        },
+        contactedPvUsers: data.groupPromotionStrategy.contactedPvUsers || {},
+        recentLeads: Array.isArray(data.groupPromotionStrategy.recentLeads) ? data.groupPromotionStrategy.recentLeads : [],
+        inboundPvConversations: Array.isArray(data.groupPromotionStrategy.inboundPvConversations) ? data.groupPromotionStrategy.inboundPvConversations : [],
+      };
+    }
+    if (data.groupJoinStrategy) {
+      appState.groupJoinStrategy = {
+        ...appState.groupJoinStrategy,
+        ...data.groupJoinStrategy,
+      };
+    }
+    if (data.dripJoinConfig) {
+      appState.dripJoinConfig = {
+        enabled: Boolean(data.dripJoinConfig.enabled),
+        maxJoinsPerAccountPerDay: data.dripJoinConfig.maxJoinsPerAccountPerDay || 8,
+        intervalMinutes: data.dripJoinConfig.intervalMinutes || 20,
+        jitterMinutes: data.dripJoinConfig.jitterMinutes || 5,
+        dailyJoinResetDate: data.dripJoinConfig.dailyJoinResetDate || new Date().toISOString().split('T')[0],
+        accountDailyJoins: data.dripJoinConfig.accountDailyJoins || {},
+        lastJoinTimePerAccount: data.dripJoinConfig.lastJoinTimePerAccount || {},
+      };
+    }
+    if (Array.isArray(data.purgedNonPersianBlacklist)) {
+      appState.purgedNonPersianBlacklist = data.purgedNonPersianBlacklist;
+    }
+    if (Array.isArray(data.broadcastHistory)) {
+      appState.broadcastHistory = data.broadcastHistory;
+    }
+    if (Array.isArray(data.monitoringReports)) {
+      appState.monitoringReports = data.monitoringReports;
+    }
+    if (data.lastBroadcastReport) {
+      appState.lastBroadcastReport = data.lastBroadcastReport;
+    }
+    if (data.anonymousAutomator) {
+      appState.anonymousAutomator = normalizeAnonymousAutomatorConfig({
+        ...appState.anonymousAutomator,
+        ...data.anonymousAutomator,
+        products: data.anonymousAutomator.products || data.anonymousAutomator.instructions?.products,
+        activeProductId: data.anonymousAutomator.activeProductId || data.anonymousAutomator.instructions?.activeProductId,
+        instructions: {
+          ...(appState.anonymousAutomator?.instructions || {}),
+          ...(data.anonymousAutomator.instructions || {}),
+          products: data.anonymousAutomator.instructions?.products || data.anonymousAutomator.products,
+          activeProductId: data.anonymousAutomator.instructions?.activeProductId || data.anonymousAutomator.activeProductId,
+          savedPrompts: Array.isArray(data.anonymousAutomator.instructions?.savedPrompts)
+            ? data.anonymousAutomator.instructions.savedPrompts
+            : (appState.anonymousAutomator?.instructions?.savedPrompts || []),
+        },
+      });
+    }
+    if (Array.isArray(data.anonymousSessionHistory)) {
+      appState.anonymousSessionHistory = data.anonymousSessionHistory;
+    }
+
+    // Reset any stuck in-progress flags
+    if (appState.activeGroupJoinProgress) {
+      appState.activeGroupJoinProgress.isRunning = false;
+    }
+    isGroupJoinRunning = false;
+    isGroupJoinCancellationRequested = false;
+
+    saveData();
+    addLog('success', '✅ بازیابی کامل تمام اطلاعات، اکانت‌ها، گروه‌ها، استراتژی‌ها و دستورالعمل‌های هوش مصنوعی از فایل پشتیبان با موفقیت انجام شد.');
+
+    res.json({
+      success: true,
+      message: 'تمامی اطلاعات و پیکربندی‌ها با موفقیت بازیابی و در پایگاه داده ذخیره شدند.',
+      groupsCount: appState.groups.length,
+      accountsCount: (appState.accounts || []).length,
+      campaignsCount: appState.campaigns.length,
+      savedPromptsCount: appState.anonymousAutomator?.instructions?.savedPrompts?.length || 0,
+      state: appState,
     });
+  } catch (err: any) {
+    console.error('Import error:', err);
+    res.status(500).json({ error: 'خطا در بارگذاری فایل پشتیبان: ' + (err?.message || err) });
   }
-  if (Array.isArray(data.accounts)) {
-    appState.accounts = data.accounts;
-  }
-  if (data.activeAccountId) {
-    appState.activeAccountId = data.activeAccountId;
-  }
-  if (Array.isArray(data.anonymousSessionHistory)) {
-    appState.anonymousSessionHistory = data.anonymousSessionHistory;
-  }
-
-  saveData();
-  addLog('success', 'بازیابی موفق تمام اطلاعات، دستورالعمل‌های ذخیره‌شده هوش مصنوعی و تنظیمات از فایل پشتیبان JSON انجام شد.');
-
-  res.json({
-    success: true,
-    message: 'اطلاعات و دستورالعمل‌های ذخیره‌شده با موفقیت بازیابی شد.',
-    groupsCount: appState.groups.length,
-    campaignsCount: appState.campaigns.length,
-    savedPromptsCount: appState.anonymousAutomator?.instructions?.savedPrompts?.length || 0,
-    state: appState,
-  });
 };
 app.post('/api/backup/import', handleImportBackup);
 app.post('/api/restore-backup', handleImportBackup);
@@ -10264,6 +10834,22 @@ app.post('/api/accounts/toggle-module', (req, res) => {
     addLog('info', `[تغییر نقش اکانت] اکانت (${acc.userProfile?.firstName || acc.phoneNumber}) ${label} گردید.`);
   } else if (module === 'pv_reply') {
     acc.enableForPvReply = isEnabled;
+    if (isEnabled) {
+      if (acc.status === 'flood_wait' && (!acc.floodWaitUntil || acc.floodWaitUntil <= Date.now())) {
+        acc.status = 'connected';
+        acc.shiftStatus = 'active_working';
+        delete acc.floodWaitUntil;
+      }
+      const stratConfig = ensureGroupPromotionStrategyConfig();
+      if (stratConfig?.strategy2) {
+        stratConfig.strategy2.autoReplyInboundPv = true;
+      }
+      getOrInitClientForAccount(acc).then(cl => {
+        if (cl && !cl._destroyed) {
+          registerInboundPvListener(cl, acc).catch(() => {});
+        }
+      }).catch(() => {});
+    }
     const label = isEnabled ? 'فعال در پاسخگویی خودکار پی‌وی (PV)' : 'غیرفعال در پاسخگویی خودکار پی‌وی (پاسخگویی دستی شخصی توسط شما)';
     addLog('info', `[تغییر نقش اکانت] اکانت (${acc.userProfile?.firstName || acc.phoneNumber}) ${label} گردید.`);
   } else if (module === 'personal_account') {
@@ -10287,6 +10873,7 @@ app.post('/api/accounts/toggle-module', (req, res) => {
   }
 
   ensureGroupTerritories();
+  ensureAllAccountClientsListening().catch(() => {});
   saveData();
   res.json({ success: true, accounts: appState.accounts, account: acc });
 });
@@ -16412,6 +16999,18 @@ function ensureGroupPromotionStrategyConfig(): GroupPromotionStrategyConfig {
     if (appState.groupPromotionStrategy.strategy2.groupReplyAlwaysWithReply === undefined) {
       appState.groupPromotionStrategy.strategy2.groupReplyAlwaysWithReply = true;
     }
+    if (appState.groupPromotionStrategy.strategy2.autoSkipLockedRestrictedGroups === undefined) {
+      appState.groupPromotionStrategy.strategy2.autoSkipLockedRestrictedGroups = true;
+    }
+    if (appState.groupPromotionStrategy.strategy2.groupCooldownMinutes === undefined) {
+      appState.groupPromotionStrategy.strategy2.groupCooldownMinutes = 2;
+    }
+    if (appState.groupPromotionStrategy.strategy2.maxRepliesPerGroupPerHour === undefined) {
+      appState.groupPromotionStrategy.strategy2.maxRepliesPerGroupPerHour = 10;
+    }
+    if (!appState.groupPromotionStrategy.strategy2.scannerPresetMode) {
+      appState.groupPromotionStrategy.strategy2.scannerPresetMode = 'turbo';
+    }
     const activeStrat = appState.groupPromotionStrategy.activeStrategy;
     if ((activeStrat === 'smart_listener_reply' || activeStrat === 'hybrid_both') && appState.groupPromotionStrategy.strategy2.isListeningActive === false) {
       appState.groupPromotionStrategy.strategy2.isListeningActive = true;
@@ -16784,8 +17383,13 @@ function matchStrictTargetGroup(
   chatTitle: string,
   currentAccount?: any
 ): TargetGroup | null {
-  const allGroups = (appState.groups || []).filter(g => g.isActive && g.status !== 'purged_non_persian' && g.readinessStatus !== 'non_persian_purged');
+  const allGroups = (appState.groups || []).filter(g => g.isActive && !isPersonalOrForbiddenGroup(g) && g.status !== 'purged_non_persian' && g.readinessStatus !== 'non_persian_purged');
   if (allGroups.length === 0) return null;
+
+  // SAFETY RULE 0: Never match personal or family groups under any circumstances
+  if (isPersonalOrForbiddenGroup({ title: chatTitle, usernameOrLink: chatUsername || rawChatId })) {
+    return null;
+  }
 
   // SAFETY RULE 1: If current account has group broadcast disabled:
   if (currentAccount && currentAccount.enableForGroupBroadcast === false) {
@@ -16834,11 +17438,18 @@ function matchStrictTargetGroup(
   // SAFETY RULE 2: If the account has isPersonalAccount: true or strictIsolationMode: true:
   if (currentAccount && (currentAccount.isPersonalAccount || currentAccount.strictIsolationMode)) {
     const isExplicitlyAssigned = matchedGroup.assignedAccountId === currentAccount.id;
-    const isExplicitlyJoined = Array.isArray(matchedGroup.joinedAccountIds) && matchedGroup.joinedAccountIds.includes(currentAccount.id);
     // If this personal account is not explicitly designated for this group, reject to avoid touching foreign target groups
-    if (!isExplicitlyAssigned && !isExplicitlyJoined) {
+    if (!isExplicitlyAssigned) {
       return null;
     }
+  }
+
+  // SAFETY RULE 3 (Suggestion 3): Auto-Skip Locked, Read-Only, Admin-Locked, or Restricted Groups
+  const stratConfig = appState.groupPromotionStrategy;
+  const isSkipLocked = stratConfig?.strategy2?.autoSkipLockedRestrictedGroups !== false;
+  if (isSkipLocked) {
+    if (matchedGroup.canSendMessages === false) return null;
+    if (matchedGroup.readinessStatus === 'no_permission_left' || matchedGroup.membershipStatus === 'restricted' || matchedGroup.status === 'failed') return null;
   }
 
   return matchedGroup;
@@ -16946,6 +17557,15 @@ async function handleRealtimeIncomingGroupMessage(client: any, event: any, msg: 
 
     const rawMsgText = (msg.message || msg.text || '').trim();
     if (!rawMsgText) return;
+
+    // 1. LIVE TELEMETRY: Increment total messages scanned across all monitored groups
+    if (config?.strategy2) {
+      config.strategy2.totalMessagesScanned = (config.strategy2.totalMessagesScanned || 0) + 1;
+      config.strategy2.lastScannedMessageAt = new Date().toISOString();
+      if (config.strategy2.totalMessagesScanned % 20 === 1) {
+        addLog('info', `[دیده‌بان گروه] پیام جدید در گروه «${matchedGroup.title}» بررسی شد. مجموع پیام‌های شنود شده: ${config.strategy2.totalMessagesScanned.toLocaleString('fa-IR')}`);
+      }
+    }
 
     // Detect if this message is an active reply to our bot or mentions our bot
     const replyMsgId = msg.replyToMsgId || msg.replyTo?.replyToMsgId;
@@ -17132,9 +17752,12 @@ async function handleRealtimeIncomingGroupMessage(client: any, event: any, msg: 
     const leadRes = detectLeadInMessage(rawMsgText, config.strategy2.keywords);
     if (!leadRes.isMatch) return;
 
-    config.strategy2.totalMessagesScanned = (config.strategy2.totalMessagesScanned || 0) + 1;
     config.strategy2.totalLeadsDetected = (config.strategy2.totalLeadsDetected || 0) + 1;
     config.strategy2.lastLeadDetectedAt = new Date().toISOString();
+    addLog(
+      'success',
+      `🎯 [شکار لید در گروه] پیام کاربر «${senderFirstName}» (@${senderUsername || senderId}) در گروه «${matchedGroup.title}» تطابق یافت: «${rawMsgText.slice(0, 45)}»`
+    );
 
     const supportContact = String(config.strategy2.supportContactHandle || activeCampaign.contactHandle || '').replace(/^@+/, '').toLowerCase();
     if (supportContact && supportContact !== 'در عکس بالا' && rawMsgText.toLowerCase().includes(supportContact)) {
@@ -17281,9 +17904,18 @@ async function handleInboundPvMessage(client: any, event: any, sender: any, mess
   const senderFirstName = sender?.firstName || 'کاربر';
   const senderPhone = sender?.phone || '';
 
-  // 1. Critical: Prevent any internal system accounts from chatting with each other in an infinite loop!
-  if (isInternalSystemAccount(senderId, senderUsername, senderPhone)) {
-    return;
+  // 1. Critical: Handle internal system accounts / user testing with loop prevention
+  const isInternal = isInternalSystemAccount(senderId, senderUsername, senderPhone);
+  if (isInternal) {
+    const nowTs = Date.now();
+    const existingTurns = internalTestPvTurnsMap.get(senderId);
+    if (existingTurns && nowTs - existingTurns.lastTs < 120000 && existingTurns.count >= 3) {
+      // Loop protection: stop after 3 consecutive automated bot exchanges within 2 minutes
+      return;
+    }
+    const newCount = (existingTurns && (nowTs - existingTurns.lastTs < 120000)) ? existingTurns.count + 1 : 1;
+    internalTestPvTurnsMap.set(senderId, { count: newCount, lastTs: nowTs });
+    addLog('info', `[تست PV اکانت] پیامی از اکانت شما (${senderFirstName || senderUsername || 'کاربر'}) به اکانت (${accountParam?.userProfile?.firstName || 'پشتیبانی'}) دریافت شد. پاسخ هوشمند تولید می‌شود...`);
   }
 
   // 2. Resolve target account and verify it is active and allowed
@@ -18649,11 +19281,16 @@ async function runGroupPromotionListenerStep() {
     }
     if (!client) return;
 
-    // Get active joined groups that are 100% ready
+    // Get active joined groups that are 100% ready (Suggestion 3: Skip dead/locked/restricted groups)
+    const isSkipLocked = config.strategy2.autoSkipLockedRestrictedGroups !== false;
     const readyGroups = getShardedActiveGroups().filter(g => {
       const isJoined = g.status === 'joined' || g.membershipStatus === 'joined' || (g.joinedAccountIds && g.joinedAccountIds.length > 0);
-      const isReady = g.isActive && isJoined && g.canSendMessages !== false && g.readinessStatus !== 'no_permission_left';
-      return isReady;
+      if (!g.isActive || !isJoined) return false;
+      if (isSkipLocked) {
+        if (g.canSendMessages === false) return false;
+        if (g.readinessStatus === 'no_permission_left' || g.membershipStatus === 'restricted' || g.status === 'failed') return false;
+      }
+      return true;
     });
 
     if (readyGroups.length === 0) return;
@@ -18686,9 +19323,9 @@ async function runGroupPromotionListenerStep() {
         const peer = await resolveAndJoinGroup(groupClient, group.usernameOrLink);
         if (!peer) continue;
 
-        // Verify 100% Persian & Iranian Audience
+        // Verify 100% Persian & Iranian Audience (cached: only check once if not already verified)
         const isEnforcePersian = appState.groupJoinStrategy?.enforcePersianIranianOnly !== false;
-        if (isEnforcePersian) {
+        if (isEnforcePersian && !group.isPersianVerified) {
           const persianCheck = await verifyAndAuditGroupIsPersian(groupClient, peer, group.title, group.usernameOrLink);
           if (!persianCheck.isPersian) {
             await purgeAndLeaveNonPersianGroup(groupClient, peer, group, persianCheck.reason);
@@ -18701,7 +19338,14 @@ async function runGroupPromotionListenerStep() {
         let messages: any[] = [];
         try {
           messages = await groupClient.getMessages(peer, { limit: 6 });
-        } catch (fetchErr) {
+        } catch (fetchErr: any) {
+          const fErr = String(fetchErr?.message || fetchErr || '').toLowerCase();
+          if (fErr.includes('chat_write_forbidden') || fErr.includes('channel_private') || fErr.includes('chat_admin_required')) {
+            group.canSendMessages = false;
+            group.status = 'failed';
+            group.membershipStatus = 'restricted';
+            group.readinessStatus = 'no_permission_left';
+          }
           continue;
         }
 
@@ -18774,8 +19418,8 @@ async function runGroupPromotionListenerStep() {
             }
           }
 
-          // Check group cooldown (default 5 minutes between any replies in this specific group)
-          const groupCooldownMinutes = config.strategy2.groupCooldownMinutes ?? 5;
+          // Check group cooldown (default 2 minutes between any replies in this specific group)
+          const groupCooldownMinutes = config.strategy2.groupCooldownMinutes ?? 2;
           const groupCooldownMs = groupCooldownMinutes * 60 * 1000;
           const lastGroupReplyTs = groupCooldownMap.get(group.id || group.title) || 0;
           if (now - lastGroupReplyTs < groupCooldownMs) {
@@ -18785,7 +19429,7 @@ async function runGroupPromotionListenerStep() {
           // Check group hourly reply limit
           const hourKey = `${group.id || group.title}_${new Date().getHours()}`;
           const currentHourly = groupHourlyReplies.get(hourKey) || { count: 0, hourTs: now };
-          if (currentHourly.count >= (config.strategy2.maxRepliesPerGroupPerHour || 5)) {
+          if (currentHourly.count >= (config.strategy2.maxRepliesPerGroupPerHour || 10)) {
             continue;
           }
 
@@ -19005,12 +19649,12 @@ async function runGroupPromotionListenerStep() {
   }
 }
 
-// Background Listener Loop for Strategy 2 (Runs every 15 seconds)
+// Background Listener Loop for Strategy 2 (Runs every 6 seconds for high real-time participation)
 setInterval(() => {
   runGroupPromotionListenerStep().catch(err => {
     console.warn('Strategy 2 listener loop caught error:', err);
   });
-}, 15000);
+}, 6000);
 
 // Background Drip Join Loop for Safe Territory Growth (Runs every 30 seconds)
 setInterval(() => {
@@ -19083,6 +19727,8 @@ async function startServer() {
       data: { port: PORT, nodeEnv: process.env.NODE_ENV || 'development' },
     });
     console.log(`Telegram UserBot Promoter running at http://0.0.0.0:${PORT}`);
+    // Enforce Ironclad personal chat protection on server boot
+    cleanPersonalAndDiscoveredGroups();
     if (appState.credentials.sessionString && appState.credentials.isConnected) {
       console.log('🔄 Restoring saved Telegram session...');
       getOrInitTgClient().then(client => {

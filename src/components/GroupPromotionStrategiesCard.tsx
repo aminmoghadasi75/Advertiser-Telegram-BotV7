@@ -43,7 +43,181 @@ import {
   ShieldAlert,
   Power,
   Users,
+  Search,
+  Loader2,
 } from 'lucide-react';
+
+export const DEFAULT_146_KEYWORDS = [
+  'vpn',
+  'وی پی ان',
+  'وی‌پی‌ان',
+  'ویپیان',
+  'فیلترشکن',
+  'فیلتر شکن',
+  'فیلترشکن رایگان',
+  'فیلترشکن خوب',
+  'فیلترشکن سالم',
+  'فیلترشکن قوی',
+  'فیلترشکن پولی',
+  'پروکسی',
+  'proxy',
+  'پروکسی رایگان',
+  'پروکسی خوب',
+  'پروکسی سالم',
+  'v2ray',
+  'v2rayng',
+  'کانفیگ',
+  'کانفیگ رایگان',
+  'کانفیگ سالم',
+  'کانفیگ جدید',
+  'کانفیگ v2ray',
+  'کانفیگ vmess',
+  'کانفیگ vless',
+  'کانفیگ reality',
+  'سرور',
+  'سرور رایگان',
+  'سرور سالم',
+  'سرور جدید',
+  'سرور خوب',
+  'لینک کانفیگ',
+  'لینک فیلترشکن',
+  'لینک پروکسی',
+  'کانفیگ میخوام',
+  'کانفیگ داری',
+  'کانفیگ دارید',
+  'کانفیگ بده',
+  'کانفیگ بدید',
+  'پروکسی داری',
+  'پروکسی دارید',
+  'سرور داری',
+  'سرور دارید',
+  'لینک داری',
+  'لینک دارید',
+  'نت ندارم',
+  'اینترنت ندارم',
+  'نت قطع شده',
+  'اینترنت قطع شده',
+  'نت قطعه',
+  'اینترنت قطعه',
+  'وصل نمیشه',
+  'وصل نمیشم',
+  'وصل نمیشن',
+  'هیچی باز نمیکنه',
+  'هیچی لود نمیکنه',
+  'کدوم فیلترشکن',
+  'کدوم vpn',
+  'فیلترشکن چی خوبه',
+  'چی وصل میشه',
+  'چی کار میکنه',
+  'چی باز میکنه',
+  'پینگ',
+  'ping',
+  'لگ',
+  'lag',
+  'کندی نت',
+  'کندی اینترنت',
+  'چت جی پی تی',
+  'chatgpt',
+  'gpt',
+  'gpt4',
+  'gpt-4',
+  'جمینای',
+  'gemini',
+  'کلود',
+  'claude',
+  'openai',
+  'اپن ای آی',
+  'هوش مصنوعی',
+  'ai',
+  'copilot',
+  'کوپایلت',
+  'perplexity',
+  'midjourney',
+  'میدجورنی',
+  'sora',
+  'huggingface',
+  'اینستا باز نمیشه',
+  'اینستاگرام باز نمیشه',
+  'اینستا لود نمیشه',
+  'اینستاگرام لود نمیشه',
+  'یوتیوب باز نمیشه',
+  'یوتیوب لود نمیشه',
+  'یوتیوب کار نمیکنه',
+  'youtube باز نمیشه',
+  'youtube لود نمیشه',
+  'توییتر باز نمیشه',
+  'توییتر لود نمیشه',
+  'تیک تاک باز نمیشه',
+  'tiktok باز نمیشه',
+  'تیک‌تاک باز نمیشه',
+  'discord',
+  'دیسکورد',
+  'reddit',
+  'ردیت',
+  'tradingview',
+  'تریدینگ ویو',
+  'تریدینگ‌ویو',
+  'بروکر',
+  'بروکر خارجی',
+  'صرافی خارجی',
+  'صرافی',
+  'forex',
+  'فارکس',
+  'فورکس',
+  'crypto',
+  'کریپتو',
+  'binance',
+  'بایننس',
+  'coinbase',
+  'کوین بیس',
+  'کوین‌بیس',
+  'metatrader',
+  'متاتریدر',
+  'mt4',
+  'mt5',
+  'trading',
+  'ترید',
+  'سرور خارجی',
+  'ip خارجی',
+  'آی پی خارجی',
+  'آی‌پی خارجی',
+  'آی پی ثابت',
+  'آی‌پی ثابت',
+  'valorant',
+  'ولورانت',
+  'call of duty',
+  'کالاف',
+  'warzone',
+  'وارزون',
+  'fortnite',
+  'فورتنایت',
+  'pubg',
+  'پابجی',
+  'apex',
+  'اپکس',
+  'league of legends',
+  'league',
+  'minecraft',
+  'ماینکرفت',
+  'سرور اروپا',
+  'سرور آلمان',
+  'سرور آمریکا',
+  'سرور ترکیه',
+  'سرور بازی',
+  'سرور وصل نمیشه',
+  'بازی وصل نمیشه',
+  'آنلاین نمیشه',
+  'بازی تحریم',
+  'سرور تحریم',
+  'اکانت تحریم',
+  'steam',
+  'استیم',
+  'psn',
+  'xbox live',
+  'ایکس باکس',
+  'گوگل فلو',
+  'google flow',
+];
 
 interface GroupPromotionStrategiesCardProps {
   strategyConfig?: GroupPromotionStrategyConfig;
@@ -92,27 +266,211 @@ export const GroupPromotionStrategiesCard: React.FC<GroupPromotionStrategiesCard
       isListeningActive: false,
       keywords: [
         'vpn',
-        'فیلترشکن',
-        'فیلتر شکن',
         'وی پی ان',
         'وی‌پی‌ان',
-        'v2ray',
-        'کانفیگ',
+        'ویپیان',
+        'فیلترشکن',
+        'فیلتر شکن',
+        'فیلترشکن رایگان',
+        'فیلترشکن خوب',
+        'فیلترشکن سالم',
+        'فیلترشکن قوی',
+        'فیلترشکن پولی',
         'پروکسی',
-        'سرعت اینترنت',
-        'کندی اینترنت',
+        'proxy',
+        'پروکسی رایگان',
+        'پروکسی خوب',
+        'پروکسی سالم',
+        'v2ray',
+        'v2rayng',
+        'کانفیگ',
+        'کانفیگ رایگان',
+        'کانفیگ سالم',
+        'کانفیگ جدید',
+        'کانفیگ اختصاصی',
+        'کانفیگ v2ray',
+        'کانفیگ vmess',
+        'کانفیگ vless',
+        'کانفیگ reality',
+        'سرور',
+        'سرور رایگان',
+        'سرور سالم',
+        'سرور جدید',
+        'سرور خوب',
+        'لینک کانفیگ',
+        'لینک فیلترشکن',
+        'لینک پروکسی',
+        'کانفیگ میخوام',
+        'کانفیگ داری',
+        'کانفیگ دارید',
+        'کانفیگ بده',
+        'کانفیگ بدید',
+        'پروکسی داری',
+        'پروکسی دارید',
+        'سرور داری',
+        'سرور دارید',
+        'لینک داری',
+        'لینک دارید',
+        'نت ندارم',
+        'اینترنت ندارم',
+        'نت قطع شده',
+        'اینترنت قطع شده',
         'نت قطعه',
+        'اینترنت قطع',
+        'وصل نمیشه',
+        'کانکت نمیشه',
+        'فیلتر شده',
+        'فیلترینگ',
+        'فیلتره',
+        'ضدفیلتر',
+        'دور زدن فیلتر',
+        'اینترنت ملی',
+        'پینگ',
+        'کاهش پینگ',
+        'پینگ بالا',
+        'پینگ بالاست',
+        'پینگم بالاست',
+        'پینگ رفته بالا',
+        'پینگ زیاد شده',
+        'پینگ نوسان داره',
+        'پینگ ثابت نیست',
+        'پینگ افتضاحه',
+        'پکت لاس',
+        'packet loss',
+        'لگ',
+        'لگ دارم',
+        'لگ میزنم',
+        'کندی اینترنت',
+        'سرعت اینترنت',
         'قطعی اینترنت',
-        'هوش مصنوعی',
-        'chatgpt',
-        'چت جی پی تی',
-        'claude',
-        'gemini',
-        'اینستا',
+        'باز نمیشه',
+        'لود نمیشه',
+        'اینترنت ضعیفه',
+        'نت ضعیفه',
+        'نت داغونه',
         'اینستاگرام',
+        'اینستا',
+        'اینستا باز نمیشه',
+        'اینستاگرام باز نمیشه',
+        'اینستا لود نمیشه',
+        'اینستاگرام لود نمیشه',
         'یوتیوب',
         'youtube',
-        'پینگ',
+        'یوتیوب باز نمیشه',
+        'یوتیوب قطع',
+        'یوتیوب کند',
+        'youtube loading',
+        'chatgpt',
+        'چت جی پی تی',
+        'چت‌جی‌پی‌تی',
+        'chatgpt باز نمیشه',
+        'chatgpt وصل نمیشه',
+        'chatgpt کار نمیکنه',
+        'chatgpt فیلتره',
+        'gemini',
+        'جمینای',
+        'gemini باز نمیشه',
+        'gemini کار نمیکنه',
+        'claude',
+        'کلود',
+        'claude باز نمیشه',
+        'claude کار نمیکنه',
+        'google ai',
+        'google ai studio',
+        'ai studio',
+        'ai.google',
+        'copilot',
+        'مایکروسافت کوپایلت',
+        'کوپایلت',
+        'perplexity',
+        'پرپلکسیتی',
+        'huggingface',
+        'هاگینگ فیس',
+        'midjourney',
+        'میدجرنی',
+        'sora',
+        'سورا',
+        'هوش مصنوعی',
+        'openai',
+        'twitter',
+        'توییتر',
+        'twitter باز نمیشه',
+        'توییتر باز نمیشه',
+        'x',
+        'x باز نمیشه',
+        'ردیت باز نمیشه',
+        'reddit باز نمیشه',
+        'tiktok',
+        'تیک تاک',
+        'tiktok باز نمیشه',
+        'discord',
+        'دیسکورد',
+        'discord باز نمیشه',
+        'تلگرام وصل نمیشه',
+        'واتساپ وصل نمیشه',
+        'tradingview',
+        'تریدینگ ویو',
+        'تریدینگ‌ویو',
+        'بروکر',
+        'بروکر خارجی',
+        'صرافی خارجی',
+        'صرافی',
+        'forex',
+        'فارکس',
+        'فورکس',
+        'crypto',
+        'کریپتو',
+        'binance',
+        'بایننس',
+        'coinbase',
+        'کوین بیس',
+        'کوین‌بیس',
+        'metatrader',
+        'متاتریدر',
+        'mt4',
+        'mt5',
+        'trading',
+        'ترید',
+        'سرور خارجی',
+        'ip خارجی',
+        'آی پی خارجی',
+        'آی‌پی خارجی',
+        'آی پی ثابت',
+        'آی‌پی ثابت',
+        'valorant',
+        'ولورانت',
+        'call of duty',
+        'کالاف',
+        'warzone',
+        'وارزون',
+        'fortnite',
+        'فورتنایت',
+        'pubg',
+        'پابجی',
+        'apex',
+        'اپکس',
+        'league of legends',
+        'league',
+        'minecraft',
+        'ماینکرفت',
+        'سرور اروپا',
+        'سرور آلمان',
+        'سرور آمریکا',
+        'سرور ترکیه',
+        'سرور بازی',
+        'سرور وصل نمیشه',
+        'بازی وصل نمیشه',
+        'آنلاین نمیشه',
+        'بازی تحریم',
+        'سرور تحریم',
+        'اکانت تحریم',
+        'steam',
+        'استیم',
+        'psn',
+        'xbox live',
+        'ایکس باکس',
+        'گوگل فلو',
+        'google flow',
       ],
       replyInGroup: true,
       sendDirectMessage: true,
@@ -141,7 +499,9 @@ export const GroupPromotionStrategiesCard: React.FC<GroupPromotionStrategiesCard
   const [simulationResult, setSimulationResult] = useState<any>(null);
   const [customTestMessage, setCustomTestMessage] = useState('سلام بچه‌ها، کسی فیلترشکن یا vpn پرسرعت بدون قطعی برای چت جی پی تی و اینستاگرام سراغ داره؟');
   const [newKeywordInput, setNewKeywordInput] = useState('');
-  const [selectedSubTab, setSelectedSubTab] = useState<'strategy1' | 'strategy2' | 'leads' | 'inbound' | 'audit_export'>('strategy2');
+  const [keywordSearchTerm, setKeywordSearchTerm] = useState('');
+  const [keywordCategoryFilter, setKeywordCategoryFilter] = useState<'all' | 'vpn' | 'trading' | 'social' | 'ai' | 'gaming' | 'speed'>('all');
+  const [selectedSubTab, setSelectedSubTab] = useState<'strategy1' | 'strategy2' | 'keywords' | 'leads' | 'inbound' | 'audit_export'>('keywords');
 
   // Comprehensive JSON Audit State
   const [auditReport, setAuditReport] = useState<any>(null);
@@ -396,6 +756,42 @@ export const GroupPromotionStrategiesCard: React.FC<GroupPromotionStrategiesCard
     });
   };
 
+  const handleApplySpeedPreset = async (preset: 'turbo' | 'balanced' | 'safe') => {
+    let groupCooldownMinutes = 2;
+    let maxRepliesPerGroupPerHour = 10;
+    let groupReplyDelaySeconds = 2;
+    let pvMessageDelaySeconds = 4;
+
+    if (preset === 'turbo') {
+      groupCooldownMinutes = 1;
+      maxRepliesPerGroupPerHour = 15;
+      groupReplyDelaySeconds = 2;
+      pvMessageDelaySeconds = 4;
+    } else if (preset === 'balanced') {
+      groupCooldownMinutes = 2;
+      maxRepliesPerGroupPerHour = 8;
+      groupReplyDelaySeconds = 3;
+      pvMessageDelaySeconds = 6;
+    } else if (preset === 'safe') {
+      groupCooldownMinutes = 5;
+      maxRepliesPerGroupPerHour = 4;
+      groupReplyDelaySeconds = 5;
+      pvMessageDelaySeconds = 10;
+    }
+
+    await onUpdateStrategyConfig({
+      strategy2: {
+        ...config.strategy2,
+        scannerPresetMode: preset,
+        groupCooldownMinutes,
+        maxRepliesPerGroupPerHour,
+        groupReplyDelaySeconds,
+        pvMessageDelaySeconds,
+        autoSkipLockedRestrictedGroups: true,
+      },
+    });
+  };
+
   const handleAddKeyword = async () => {
     const trimmed = newKeywordInput.trim().toLowerCase();
     if (!trimmed) return;
@@ -422,6 +818,121 @@ export const GroupPromotionStrategiesCard: React.FC<GroupPromotionStrategiesCard
       },
     });
   };
+
+  const handleAddCategoryKeywords = async (keywordsToAdd: string[]) => {
+    const current = config.strategy2.keywords || [];
+    const merged = Array.from(new Set([...current, ...keywordsToAdd.map(k => k.trim().toLowerCase())])).filter(Boolean);
+    await onUpdateStrategyConfig({
+      strategy2: {
+        ...config.strategy2,
+        keywords: merged,
+      },
+    });
+  };
+
+  const handleResetDefaultKeywords = async () => {
+    if (!confirm('آیا مایلید تمام ۱۴۶ کلیدواژه پیش‌فرض استاندارد (شامل ترید، سوشال، AI، گیمینگ و VPN) بازیابی و اعمال شوند؟')) return;
+    await onUpdateStrategyConfig({
+      strategy2: {
+        ...config.strategy2,
+        keywords: DEFAULT_146_KEYWORDS,
+      },
+    });
+  };
+
+  const classifyKeyword = (kw: string) => {
+    const k = kw.toLowerCase().trim();
+    if (k.includes('trade') || k.includes('ترید') || k.includes('forex') || k.includes('فارکس') || k.includes('crypto') || k.includes('کریپتو') || k.includes('binance') || k.includes('بایننس') || k.includes('coinbase') || k.includes('متاتریدر') || k.includes('mt4') || k.includes('mt5') || k.includes('بروکر') || k.includes('صرافی') || k.includes('آی پی') || k.includes('ip')) {
+      return { category: 'trading', label: 'ترید و کریپتو و فارکس', badgeColor: 'bg-amber-500/15 text-amber-300 border-amber-500/30' };
+    }
+    if (k.includes('chatgpt') || k.includes('چت جی پی تی') || k.includes('gemini') || k.includes('جمینای') || k.includes('claude') || k.includes('کلود') || k.includes('ai') || k.includes('هوش مصنوعی') || k.includes('copilot') || k.includes('perplexity') || k.includes('midjourney') || k.includes('sora') || k.includes('huggingface') || k.includes('openai') || k.includes('کوپایلت')) {
+      return { category: 'ai', label: 'هوش مصنوعی و ابزارها', badgeColor: 'bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30' };
+    }
+    if (k.includes('اینستا') || k.includes('یوتیوب') || k.includes('youtube') || k.includes('twitter') || k.includes('توییتر') || k.includes('x') || k.includes('tiktok') || k.includes('تیک تاک') || k.includes('discord') || k.includes('دیسکورد') || k.includes('ردیت') || k.includes('reddit') || k.includes('تلگرام') || k.includes('واتساپ')) {
+      return { category: 'social', label: 'شبکه‌های اجتماعی', badgeColor: 'bg-rose-500/15 text-rose-300 border-rose-500/30' };
+    }
+    if (k.includes('پینگ') || k.includes('ping') || k.includes('لگ') || k.includes('lag') || k.includes('بازی') || k.includes('گیم') || k.includes('game') || k.includes('valorant') || k.includes('ولورانت') || k.includes('کالاف') || k.includes('warzone') || k.includes('وارزون') || k.includes('fortnite') || k.includes('فورتنایت') || k.includes('pubg') || k.includes('پابجی') || k.includes('apex') || k.includes('league') || k.includes('ماینکرفت') || k.includes('minecraft') || k.includes('steam') || k.includes('استیم') || k.includes('psn') || k.includes('xbox') || k.includes('پکت لاس') || k.includes('تحریم')) {
+      return { category: 'gaming', label: 'گیمینگ و پینگ و سرور', badgeColor: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' };
+    }
+    if (k.includes('سرعت') || k.includes('کندی') || k.includes('قطعی') || k.includes('نت') || k.includes('اینترنت') || k.includes('قطع') || k.includes('وصل نمیشه') || k.includes('کانکت') || k.includes('باز نمیشه') || k.includes('لود نمیشه') || k.includes('ملی')) {
+      return { category: 'speed', label: 'سرعت و قطعی اینترنت', badgeColor: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30' };
+    }
+    return { category: 'vpn', label: 'فیلترشکن، کانفیگ و سرور', badgeColor: 'bg-purple-500/15 text-purple-300 border-purple-500/30' };
+  };
+
+  const KEYWORD_PRESETS = [
+    {
+      id: 'trading',
+      title: '📈 ترید، فارکس و صرافی',
+      keywords: [
+        'tradingview', 'تریدینگ ویو', 'تریدینگ‌ویو', 'بروکر', 'بروکر خارجی', 'صرافی خارجی', 'صرافی',
+        'forex', 'فارکس', 'فورکس', 'crypto', 'کریپتو', 'binance', 'بایننس', 'coinbase', 'کوین بیس',
+        'کوین‌بیس', 'metatrader', 'متاتریدر', 'mt4', 'mt5', 'trading', 'ترید', 'سرور خارجی',
+        'ip خارجی', 'آی پی خارجی', 'آی‌پی خارجی', 'آی پی ثابت', 'آی‌پی ثابت'
+      ]
+    },
+    {
+      id: 'social',
+      title: '💬 اینستاگرام، یوتیوب و سوشال',
+      keywords: [
+        'اینستا باز نمیشه', 'اینستاگرام باز نمیشه', 'اینستا لود نمیشه', 'اینستاگرام لود نمیشه',
+        'یوتیوب باز نمیشه', 'یوتیوب قطع', 'یوتیوب کند', 'youtube loading', 'twitter باز نمیشه',
+        'x باز نمیشه', 'توییتر باز نمیشه', 'ردیت باز نمیشه', 'reddit باز نمیشه', 'discord باز نمیشه',
+        'tiktok باز نمیشه', 'تلگرام وصل نمیشه', 'واتساپ وصل نمیشه', 'اینستاگرام', 'اینستا', 'یوتیوب', 'youtube', 'twitter', 'توییتر', 'x', 'tiktok', 'تیک تاک', 'discord', 'دیسکورد'
+      ]
+    },
+    {
+      id: 'ai',
+      title: '🤖 هوش مصنوعی (ChatGPT, Claude, Gemini)',
+      keywords: [
+        'chatgpt', 'چت جی پی تی', 'چت‌جی‌پی‌تی', 'chatgpt باز نمیشه', 'chatgpt وصل نمیشه',
+        'chatgpt کار نمیکنه', 'chatgpt فیلتره', 'gemini', 'جمینای', 'gemini باز نمیشه',
+        'gemini کار نمیکنه', 'claude', 'کلود', 'claude باز نمیشه', 'claude کار نمیکنه',
+        'google ai', 'google ai studio', 'ai studio', 'ai.google', 'copilot', 'مایکروسافت کوپایلت',
+        'کوپایلت', 'perplexity', 'پرپلکسیتی', 'huggingface', 'هاگینگ فیس', 'midjourney',
+        'میدجرنی', 'sora', 'سورا', 'هوش مصنوعی', 'openai'
+      ]
+    },
+    {
+      id: 'gaming',
+      title: '🎮 گیمینگ، پینگ و پکت‌لاس',
+      keywords: [
+        'valorant', 'ولورانت', 'call of duty', 'کالاف', 'warzone', 'وارزون', 'fortnite',
+        'فورتنایت', 'pubg', 'پابجی', 'apex', 'اپکس', 'league of legends', 'league',
+        'minecraft', 'ماینکرفت', 'پینگ بالاست', 'پینگم بالاست', 'پینگ رفته بالا',
+        'پینگ زیاد شده', 'پینگ نوسان داره', 'پینگ ثابت نیست', 'پینگ افتضاحه', 'پکت لاس',
+        'packet loss', 'لگ', 'لگ دارم', 'لگ میزنم', 'سرور اروپا', 'سرور آلمان',
+        'سرور آمریکا', 'سرور ترکیه', 'سرور بازی', 'سرور وصل نمیشه', 'بازی وصل نمیشه',
+        'آنلاین نمیشه', 'بازی تحریم', 'سرور تحریم', 'اکانت تحریم', 'steam', 'استیم',
+        'psn', 'xbox live', 'ایکس باکس', 'پینگ', 'کاهش پینگ', 'پینگ بالا'
+      ]
+    },
+    {
+      id: 'speed',
+      title: '⚡ سرعت، اختلال و قطعی اینترنت',
+      keywords: [
+        'نت ندارم', 'اینترنت ندارم', 'نت قطع شده', 'اینترنت قطع شده', 'نت قطعه',
+        'اینترنت قطع', 'وصل نمیشه', 'کانکت نمیشه', 'فیلتر شده', 'فیلترینگ', 'فیلتره',
+        'ضدفیلتر', 'دور زدن فیلتر', 'اینترنت ملی', 'کندی اینترنت', 'سرعت اینترنت',
+        'قطعی اینترنت', 'باز نمیشه', 'لود نمیشه', 'اینترنت ضعیفه', 'نت ضعیفه', 'نت داغونه'
+      ]
+    },
+    {
+      id: 'vpn',
+      title: '🛡️ فیلترشکن، کانفیگ و سرور',
+      keywords: [
+        'vpn', 'وی پی ان', 'وی‌پی‌ان', 'ویپیان', 'فیلترشکن', 'فیلتر شکن', 'فیلترشکن رایگان',
+        'فیلترشکن خوب', 'فیلترشکن سالم', 'فیلترشکن قوی', 'فیلترشکن پولی', 'پروکسی',
+        'proxy', 'پروکسی رایگان', 'پروکسی خوب', 'پروکسی سالم', 'v2ray', 'v2rayng',
+        'کانفیگ', 'کانفیگ رایگان', 'کانفیگ سالم', 'کانفیگ جدید', 'کانفیگ اختصاصی',
+        'کانفیگ v2ray', 'کانفیگ vmess', 'کانفیگ vless', 'کانفیگ reality', 'سرور',
+        'سرور رایگان', 'سرور سالم', 'سرور جدید', 'سرور خوب', 'لینک کانفیگ',
+        'لینک فیلترشکن', 'لینک پروکسی', 'کانفیگ میخوام', 'کانفیگ داری', 'کانفیگ دارید',
+        'کانفیگ بده', 'کانفیگ بدید', 'پروکسی داری', 'پروکسی دارید', 'سرور داری',
+        'سرور دارید', 'لینک داری', 'لینک دارید', 'گوگل فلو', 'google flow'
+      ]
+    }
+  ];
 
   const handleRunStrategy1Click = async () => {
     setIsRunningStrategy1(true);
@@ -642,8 +1153,8 @@ export const GroupPromotionStrategiesCard: React.FC<GroupPromotionStrategiesCard
               </div>
 
               <div className="pt-4 mt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
-                <span className="text-slate-400">
-                  شناسایی: <b className="text-white">{config.strategy2.keywords.length} کلیدواژه هوشمند</b>
+                <span className="text-slate-400 flex items-center gap-1.5">
+                  شناسایی: <b className="text-purple-300 font-bold bg-purple-500/20 px-2 py-0.5 rounded-lg border border-purple-500/30 font-mono">{config.strategy2.keywords.length} کلیدواژه فعال</b>
                 </span>
                 <span className="text-purple-400 font-bold">
                   ریپلای گروه + پی‌وی
@@ -700,8 +1211,23 @@ export const GroupPromotionStrategiesCard: React.FC<GroupPromotionStrategiesCard
           {/* Sub Navigation Bar to configure details */}
           <div className="flex items-center gap-2 pt-2 border-t border-slate-800/80 overflow-x-auto">
             <button
+              onClick={() => setSelectedSubTab('keywords')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
+                selectedSubTab === 'keywords'
+                  ? 'bg-purple-600 text-white border border-purple-400 shadow-lg shadow-purple-500/20 ring-2 ring-purple-400/30'
+                  : 'bg-purple-950/40 text-purple-300 hover:text-white border border-purple-800/50'
+              }`}
+            >
+              <Tag className="w-3.5 h-3.5 text-purple-300" />
+              <span>مرکز کلیدواژه‌های شنود</span>
+              <span className="text-[10px] bg-purple-900/80 px-1.5 py-0.2 rounded-full font-mono font-bold text-purple-200">
+                {config.strategy2?.keywords?.length || 0}
+              </span>
+            </button>
+
+            <button
               onClick={() => setSelectedSubTab('strategy1')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
                 selectedSubTab === 'strategy1'
                   ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
                   : 'text-slate-400 hover:text-slate-200'
@@ -713,7 +1239,7 @@ export const GroupPromotionStrategiesCard: React.FC<GroupPromotionStrategiesCard
 
             <button
               onClick={() => setSelectedSubTab('strategy2')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
                 selectedSubTab === 'strategy2'
                   ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
                   : 'text-slate-400 hover:text-slate-200'
@@ -725,7 +1251,7 @@ export const GroupPromotionStrategiesCard: React.FC<GroupPromotionStrategiesCard
 
             <button
               onClick={() => setSelectedSubTab('inbound')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
                 selectedSubTab === 'inbound'
                   ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                   : 'text-slate-400 hover:text-slate-200'
@@ -742,7 +1268,7 @@ export const GroupPromotionStrategiesCard: React.FC<GroupPromotionStrategiesCard
 
             <button
               onClick={() => setSelectedSubTab('leads')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
                 selectedSubTab === 'leads'
                   ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
                   : 'text-slate-400 hover:text-slate-200'
@@ -762,7 +1288,7 @@ export const GroupPromotionStrategiesCard: React.FC<GroupPromotionStrategiesCard
                 setSelectedSubTab('audit_export');
                 handleFetchAudit();
               }}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
                 selectedSubTab === 'audit_export'
                   ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                   : 'text-slate-400 hover:text-slate-200'
@@ -1483,63 +2009,387 @@ export const GroupPromotionStrategiesCard: React.FC<GroupPromotionStrategiesCard
 
           </div>
 
-          {/* Keywords Management Section */}
-          <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Tag className="w-4 h-4 text-purple-400" />
-                <span className="text-xs font-bold text-white">کلیدواژه‌های ردیابی و شنود پیام‌ها</span>
-                <span className="text-[10px] text-slate-400">
-                  (فیلترشکن، کندی اینترنت، قطعی، هوش مصنوعی، اینستاگرام، پینگ و...)
-                </span>
+          {/* Advanced Keywords Hub Section */}
+          <div className="bg-slate-950/80 border border-purple-500/30 rounded-2xl p-5 space-y-4 shadow-xl shadow-purple-950/10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-300 flex items-center justify-center">
+                  <Tag className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                    <span>کلیدواژه‌های ردیابی و شنود پیام‌ها</span>
+                    <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-mono font-bold border border-purple-500/30">
+                      {config.strategy2.keywords.length} کلیدواژه فعال
+                    </span>
+                  </h4>
+                  <p className="text-[11px] text-slate-400">
+                    شامل فیلترشکن، ترید و صرافی، اینستاگرام، یوتیوب، هوش مصنوعی، گیمینگ، پینگ و اختلالات نت
+                  </p>
+                </div>
               </div>
-              <span className="text-[11px] text-purple-400 font-mono font-bold">
-                {config.strategy2.keywords.length} کلمه فعال
-              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleResetDefaultKeywords}
+                  className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-bold transition-all border border-slate-700/80 flex items-center gap-1.5"
+                  title="بازیابی تمام ۱۴۶ کلیدواژه پیش‌فرض استاندارد"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-purple-400" />
+                  <span>بازیابی کلیدواژه‌های پیش‌فرض (۱۴۶ مورد)</span>
+                </button>
+              </div>
             </div>
 
-            {/* Add new keyword input */}
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={newKeywordInput}
-                onChange={(e) => setNewKeywordInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddKeyword()}
-                placeholder="افزودن کلمه کلیدی جدید (مثلا: کانفیگ، بازی، کلود، openai)..."
-                className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
-              />
+            {/* Category Filter Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
               <button
                 type="button"
-                onClick={handleAddKeyword}
-                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shrink-0"
+                onClick={() => setKeywordCategoryFilter('all')}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                  keywordCategoryFilter === 'all'
+                    ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
+                    : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+                }`}
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>افزودن</span>
+                <span>همه</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/30 font-mono">
+                  {config.strategy2.keywords.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setKeywordCategoryFilter('vpn')}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                  keywordCategoryFilter === 'vpn'
+                    ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
+                    : 'bg-slate-900 text-purple-300 hover:text-white border border-slate-800'
+                }`}
+              >
+                <span>🛡️ فیلترشکن و سرور</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-purple-950/80 text-purple-200 font-mono">
+                  {config.strategy2.keywords.filter(k => classifyKeyword(k).category === 'vpn').length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setKeywordCategoryFilter('trading')}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                  keywordCategoryFilter === 'trading'
+                    ? 'bg-amber-600 text-white shadow-md shadow-amber-500/20'
+                    : 'bg-slate-900 text-amber-300 hover:text-white border border-slate-800'
+                }`}
+              >
+                <span>📈 ترید و کریپتو و صرافی</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-950/80 text-amber-200 font-mono">
+                  {config.strategy2.keywords.filter(k => classifyKeyword(k).category === 'trading').length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setKeywordCategoryFilter('social')}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                  keywordCategoryFilter === 'social'
+                    ? 'bg-rose-600 text-white shadow-md shadow-rose-500/20'
+                    : 'bg-slate-900 text-rose-300 hover:text-white border border-slate-800'
+                }`}
+              >
+                <span>💬 اینستاگرام و سوشال</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-950/80 text-rose-200 font-mono">
+                  {config.strategy2.keywords.filter(k => classifyKeyword(k).category === 'social').length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setKeywordCategoryFilter('ai')}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                  keywordCategoryFilter === 'ai'
+                    ? 'bg-fuchsia-600 text-white shadow-md shadow-fuchsia-500/20'
+                    : 'bg-slate-900 text-fuchsia-300 hover:text-white border border-slate-800'
+                }`}
+              >
+                <span>🤖 هوش مصنوعی (ChatGPT, Gemini)</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-fuchsia-950/80 text-fuchsia-200 font-mono">
+                  {config.strategy2.keywords.filter(k => classifyKeyword(k).category === 'ai').length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setKeywordCategoryFilter('gaming')}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                  keywordCategoryFilter === 'gaming'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'
+                    : 'bg-slate-900 text-emerald-300 hover:text-white border border-slate-800'
+                }`}
+              >
+                <span>🎮 گیمینگ، پینگ و سرور</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-950/80 text-emerald-200 font-mono">
+                  {config.strategy2.keywords.filter(k => classifyKeyword(k).category === 'gaming').length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setKeywordCategoryFilter('speed')}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                  keywordCategoryFilter === 'speed'
+                    ? 'bg-cyan-600 text-white shadow-md shadow-cyan-500/20'
+                    : 'bg-slate-900 text-cyan-300 hover:text-white border border-slate-800'
+                }`}
+              >
+                <span>⚡ اختلال و قطعی اینترنت</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-cyan-950/80 text-cyan-200 font-mono">
+                  {config.strategy2.keywords.filter(k => classifyKeyword(k).category === 'speed').length}
+                </span>
               </button>
             </div>
 
-            {/* Keywords tags badges */}
-            <div className="flex flex-wrap gap-1.5 pt-1 max-h-36 overflow-y-auto">
-              {config.strategy2.keywords.map((kw) => (
-                <span
-                  key={kw}
-                  className="inline-flex items-center gap-1.5 bg-slate-900 border border-slate-800 hover:border-purple-500/40 text-slate-200 text-xs px-2.5 py-1 rounded-lg font-medium transition-all group"
-                >
-                  <span>{kw}</span>
+            {/* Search and Add Inputs */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-1">
+              <div className="md:col-span-5 relative">
+                <Search className="w-4 h-4 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={keywordSearchTerm}
+                  onChange={(e) => setKeywordSearchTerm(e.target.value)}
+                  placeholder="جستجو در بین کلیدواژه‌های فعال (مثلاً: ترید، اینستا، پینگ، vmess)..."
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl pr-9 pl-8 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                />
+                {keywordSearchTerm && (
                   <button
                     type="button"
-                    onClick={() => handleRemoveKeyword(kw)}
-                    className="text-slate-500 hover:text-rose-400 transition-colors"
+                    onClick={() => setKeywordSearchTerm('')}
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs"
                   >
                     ×
                   </button>
-                </span>
+                )}
+              </div>
+
+              <div className="md:col-span-7 flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newKeywordInput}
+                  onChange={(e) => setNewKeywordInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddKeyword()}
+                  placeholder="افزودن کلمه کلیدی دلخواه جدید..."
+                  className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddKeyword}
+                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shrink-0"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>افزودن کلمه</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Presets Batch Add */}
+            <div className="flex flex-wrap items-center gap-2 pt-1 pb-1">
+              <span className="text-[11px] text-slate-400 font-bold shrink-0">افزودن دسته‌ای بسته‌های کلیدواژه:</span>
+              {KEYWORD_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => handleAddCategoryKeywords(preset.keywords)}
+                  className="px-2.5 py-1 rounded-lg bg-slate-900/90 hover:bg-purple-950/60 border border-slate-800 hover:border-purple-500/50 text-slate-300 hover:text-purple-200 text-[11px] font-medium transition-all flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3 text-purple-400" />
+                  <span>{preset.title}</span>
+                </button>
               ))}
+            </div>
+
+            {/* Keywords tags badges list */}
+            <div className="border border-slate-800/80 rounded-xl p-3 bg-slate-900/50 max-h-56 overflow-y-auto space-y-2">
+              <div className="flex flex-wrap gap-1.5">
+                {config.strategy2.keywords
+                  .filter((kw) => {
+                    const matchesSearch = !keywordSearchTerm.trim() || kw.toLowerCase().includes(keywordSearchTerm.trim().toLowerCase());
+                    if (!matchesSearch) return false;
+                    if (keywordCategoryFilter === 'all') return true;
+                    return classifyKeyword(kw).category === keywordCategoryFilter;
+                  })
+                  .map((kw) => {
+                    const info = classifyKeyword(kw);
+                    return (
+                      <span
+                        key={kw}
+                        className={`inline-flex items-center gap-1.5 border px-2.5 py-1 rounded-lg text-xs font-medium transition-all group ${info.badgeColor}`}
+                      >
+                        <span className="font-sans">{kw}</span>
+                        <span className="text-[9px] opacity-70 px-1 rounded bg-black/20">{info.label.split(' ')[0]}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveKeyword(kw)}
+                          className="opacity-60 hover:opacity-100 hover:text-rose-400 font-bold transition-colors pr-0.5"
+                          title="حذف این کلمه"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    );
+                  })}
+              </div>
+
+              {config.strategy2.keywords.filter((kw) => {
+                const matchesSearch = !keywordSearchTerm.trim() || kw.toLowerCase().includes(keywordSearchTerm.trim().toLowerCase());
+                if (!matchesSearch) return false;
+                if (keywordCategoryFilter === 'all') return true;
+                return classifyKeyword(kw).category === keywordCategoryFilter;
+              }).length === 0 && (
+                <div className="text-center py-6 text-slate-400 text-xs">
+                  هیچ کلمه کلیدی با فیلتر یا جستجوی وارد شده یافت نشد.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Speed Presets & Responsiveness Optimizer (Suggestion 1) */}
+          <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-amber-400" />
+                <h4 className="text-xs font-bold text-white">
+                  پروفایل‌های سرعت و واکنش‌گرایی شنود (پیشنهاد ۱ - بهینه‌سازی کول‌داون و سرعت)
+                </h4>
+              </div>
+              <span className="text-[10px] text-slate-400">
+                تنظیم فوری پارامترهای تاخیر و سقف پاسخ‌دهی
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => handleApplySpeedPreset('turbo')}
+                className={`flex items-center justify-between p-2.5 rounded-xl border text-right transition-all ${
+                  config.strategy2.scannerPresetMode === 'turbo'
+                    ? 'bg-amber-500/15 border-amber-500/60 text-amber-200'
+                    : 'bg-slate-900/80 border-slate-800 hover:border-slate-700 text-slate-300'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <Flame className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="text-xs font-bold">⚡ فوق‌سریع (Turbo)</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    وقفه ۱ دقیقه | سقف ۱۵ پاسخ/ساعت | تاخیر ۲ ثانیه
+                  </p>
+                </div>
+                {config.strategy2.scannerPresetMode === 'turbo' && (
+                  <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleApplySpeedPreset('balanced')}
+                className={`flex items-center justify-between p-2.5 rounded-xl border text-right transition-all ${
+                  config.strategy2.scannerPresetMode === 'balanced'
+                    ? 'bg-sky-500/15 border-sky-500/60 text-sky-200'
+                    : 'bg-slate-900/80 border-slate-800 hover:border-slate-700 text-slate-300'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <Sliders className="w-3.5 h-3.5 text-sky-400" />
+                    <span className="text-xs font-bold">⚖️ متعادل (Balanced)</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    وقفه ۲ دقیقه | سقف ۸ پاسخ/ساعت | تاخیر ۳ ثانیه
+                  </p>
+                </div>
+                {config.strategy2.scannerPresetMode === 'balanced' && (
+                  <CheckCircle2 className="w-4 h-4 text-sky-400 shrink-0" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleApplySpeedPreset('safe')}
+                className={`flex items-center justify-between p-2.5 rounded-xl border text-right transition-all ${
+                  config.strategy2.scannerPresetMode === 'safe'
+                    ? 'bg-emerald-500/15 border-emerald-500/60 text-emerald-200'
+                    : 'bg-slate-900/80 border-slate-800 hover:border-slate-700 text-slate-300'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-xs font-bold">🛡️ محافظه‌کار (Safe)</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    وقفه ۵ دقیقه | سقف ۴ پاسخ/ساعت | تاخیر ۵ ثانیه
+                  </p>
+                </div>
+                {config.strategy2.scannerPresetMode === 'safe' && (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Skip Locked & Dead Groups Section (Suggestion 3) */}
+          <div className="bg-slate-950/70 border border-emerald-500/30 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-emerald-400" />
+                <div>
+                  <h4 className="text-xs font-bold text-white">
+                    رد کردن هوشمند گروه‌های قفل‌شده یا فقط‌ادمین (پیشنهاد ۳ - تمرکز ۱۰۰٪ روی گروه‌های باز)
+                  </h4>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    جلوگیری از اتلاف دور موتور شنود روی گروه‌هایی که امکان ارسال پیام در آن‌ها وجود ندارد
+                  </p>
+                </div>
+              </div>
+
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={config.strategy2.autoSkipLockedRestrictedGroups !== false}
+                  onChange={(e) => handleStrategy2Toggle('autoSkipLockedRestrictedGroups', e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <div className="bg-slate-900/80 border border-slate-800 p-2.5 rounded-xl flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span className="text-slate-300 font-bold text-[11px]">گروه‌های فعال و ۱۰۰٪ باز برای شنود و ارسال:</span>
+                </div>
+                <span className="bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-md font-bold text-xs">
+                  {groups.filter(g => g.isActive && (g.status === 'joined' || g.membershipStatus === 'joined' || (g.joinedAccountIds && g.joinedAccountIds.length > 0)) && g.canSendMessages !== false && g.readinessStatus !== 'no_permission_left').length} گروه
+                </span>
+              </div>
+
+              <div className="bg-slate-900/80 border border-slate-800 p-2.5 rounded-xl flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-400" />
+                  <span className="text-slate-300 font-bold text-[11px]">گروه‌های قفل / نیازمند دسترسی ادمین (اسکیپ):</span>
+                </div>
+                <span className="bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-md font-bold text-xs">
+                  {groups.filter(g => g.isActive && (g.canSendMessages === false || g.readinessStatus === 'no_permission_left' || g.membershipStatus === 'restricted' || g.status === 'failed')).length} گروه
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Delay & Safety Settings */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
             
             <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 space-y-2">
               <label className="text-[11px] text-slate-300 font-bold block">
@@ -1550,28 +2400,45 @@ export const GroupPromotionStrategiesCard: React.FC<GroupPromotionStrategiesCard
                   type="number"
                   min={1}
                   max={30}
-                  value={config.strategy2.groupReplyDelaySeconds || 4}
-                  onChange={(e) => handleStrategy2Toggle('groupReplyDelaySeconds', Math.max(1, parseInt(e.target.value, 10) || 4))}
+                  value={config.strategy2.groupReplyDelaySeconds || 2}
+                  onChange={(e) => handleStrategy2Toggle('groupReplyDelaySeconds', Math.max(1, parseInt(e.target.value, 10) || 2))}
                   className="w-16 bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center text-xs font-bold text-white"
                 />
-                <span className="text-xs text-slate-400">ثانیه (خواندن پیام)</span>
+                <span className="text-xs text-slate-400">ثانیه</span>
               </div>
             </div>
 
             <div className="bg-slate-950/60 p-3 rounded-xl border border-sky-500/30 space-y-2">
               <label className="text-[11px] text-sky-300 font-bold block">
-                فاصله پاسخ در یک گروه:
+                وقفه بین ریپلای در ۱ گروه:
               </label>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
                   min={1}
                   max={60}
-                  value={config.strategy2.groupCooldownMinutes ?? 5}
-                  onChange={(e) => handleStrategy2Toggle('groupCooldownMinutes', Math.max(1, parseInt(e.target.value, 10) || 5))}
+                  value={config.strategy2.groupCooldownMinutes ?? 2}
+                  onChange={(e) => handleStrategy2Toggle('groupCooldownMinutes', Math.max(1, parseInt(e.target.value, 10) || 2))}
                   className="w-16 bg-slate-900 border border-sky-500/40 rounded-lg p-1.5 text-center text-xs font-bold text-white"
                 />
-                <span className="text-xs text-slate-400">دقیقه (ضد اسپم گروه)</span>
+                <span className="text-xs text-slate-400">دقیقه</span>
+              </div>
+            </div>
+
+            <div className="bg-slate-950/60 p-3 rounded-xl border border-amber-500/30 space-y-2">
+              <label className="text-[11px] text-amber-300 font-bold block">
+                سقف پاسخ در گروه در ساعت:
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={config.strategy2.maxRepliesPerGroupPerHour || 10}
+                  onChange={(e) => handleStrategy2Toggle('maxRepliesPerGroupPerHour', Math.max(1, parseInt(e.target.value, 10) || 10))}
+                  className="w-16 bg-slate-900 border border-amber-500/40 rounded-lg p-1.5 text-center text-xs font-bold text-white"
+                />
+                <span className="text-xs text-slate-400">ریپلای/ساعت</span>
               </div>
             </div>
 
@@ -1584,11 +2451,11 @@ export const GroupPromotionStrategiesCard: React.FC<GroupPromotionStrategiesCard
                   type="number"
                   min={2}
                   max={60}
-                  value={config.strategy2.pvMessageDelaySeconds || 8}
-                  onChange={(e) => handleStrategy2Toggle('pvMessageDelaySeconds', Math.max(2, parseInt(e.target.value, 10) || 8))}
+                  value={config.strategy2.pvMessageDelaySeconds || 4}
+                  onChange={(e) => handleStrategy2Toggle('pvMessageDelaySeconds', Math.max(2, parseInt(e.target.value, 10) || 4))}
                   className="w-16 bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center text-xs font-bold text-white"
                 />
-                <span className="text-xs text-slate-400">ثانیه (رفتار طبیعی)</span>
+                <span className="text-xs text-slate-400">ثانیه</span>
               </div>
             </div>
 
@@ -1606,7 +2473,7 @@ export const GroupPromotionStrategiesCard: React.FC<GroupPromotionStrategiesCard
                   onChange={(e) => handleStrategy2Toggle('multiBubbleDelaySeconds', Math.max(1, parseFloat(e.target.value) || 1.5))}
                   className="w-16 bg-slate-900 border border-purple-500/40 rounded-lg p-1.5 text-center text-xs font-bold text-white"
                 />
-                <span className="text-xs text-slate-400">ثانیه + تایپینگ</span>
+                <span className="text-xs text-slate-400">ثانیه</span>
               </div>
             </div>
 
@@ -1623,7 +2490,7 @@ export const GroupPromotionStrategiesCard: React.FC<GroupPromotionStrategiesCard
                   onChange={(e) => handleStrategy2Toggle('userCooldownHours', Math.max(1, parseInt(e.target.value, 10) || 24))}
                   className="w-16 bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center text-xs font-bold text-white"
                 />
-                <span className="text-xs text-slate-400">ساعت (عدم تکرار)</span>
+                <span className="text-xs text-slate-400">ساعت</span>
               </div>
             </div>
 
@@ -1823,6 +2690,424 @@ export const GroupPromotionStrategiesCard: React.FC<GroupPromotionStrategiesCard
               </div>
             )}
 
+          </div>
+
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SUB-PANEL: DEDICATED KEYWORDS HUB (مرکز جامع کلیدواژه‌های شنود هوشمند) */}
+      {/* ========================================================================= */}
+      {selectedSubTab === 'keywords' && (
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-6 animate-in fade-in duration-200">
+          
+          {/* Header & Status */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center border border-purple-500/30">
+                  <Tag className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <span>بانک و مرکز جامع کلیدواژه‌های شنود و دیده‌بانی</span>
+                    <span className="text-xs bg-purple-600 text-white px-2.5 py-0.5 rounded-full font-mono font-bold shadow-md shadow-purple-500/30">
+                      {config.strategy2.keywords.length} کلیدواژه فعال در سیستم
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    ربات تمام پیام‌های گروه‌ها را با این کلمات تطبیق داده و در صورت شناسایی تقاضا، ریپلای در گروه و پیام شخصی در پی‌وی ارسال می‌کند.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleResetDefaultKeywords}
+                className="px-3.5 py-2 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 text-purple-200 hover:text-white text-xs font-bold transition-all border border-purple-800/80 flex items-center gap-2 shadow-sm"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-purple-400" />
+                <span>بازیابی تمام ۱۴۶ کلمه پیش‌فرض استاندارد</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Category Summary Cards Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <button
+              type="button"
+              onClick={() => setKeywordCategoryFilter('vpn')}
+              className={`p-3 rounded-2xl border text-right transition-all flex flex-col justify-between ${
+                keywordCategoryFilter === 'vpn'
+                  ? 'bg-purple-900/40 border-purple-500 ring-2 ring-purple-500/30'
+                  : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
+              }`}
+            >
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span className="text-purple-300 font-bold">🛡️ فیلترشکن</span>
+                <span className="text-[10px] bg-purple-950 px-1.5 py-0.2 rounded font-mono font-bold text-purple-200">
+                  {config.strategy2.keywords.filter(k => classifyKeyword(k).category === 'vpn').length}
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400">VPN، پروکسی، V2Ray و کانفیگ</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setKeywordCategoryFilter('trading')}
+              className={`p-3 rounded-2xl border text-right transition-all flex flex-col justify-between ${
+                keywordCategoryFilter === 'trading'
+                  ? 'bg-amber-900/40 border-amber-500 ring-2 ring-amber-500/30'
+                  : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
+              }`}
+            >
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span className="text-amber-300 font-bold">📈 ترید و فارکس</span>
+                <span className="text-[10px] bg-amber-950 px-1.5 py-0.2 rounded font-mono font-bold text-amber-200">
+                  {config.strategy2.keywords.filter(k => classifyKeyword(k).category === 'trading').length}
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400">TradingView، بایننس، صرافی، IP ثابت</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setKeywordCategoryFilter('social')}
+              className={`p-3 rounded-2xl border text-right transition-all flex flex-col justify-between ${
+                keywordCategoryFilter === 'social'
+                  ? 'bg-rose-900/40 border-rose-500 ring-2 ring-rose-500/30'
+                  : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
+              }`}
+            >
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span className="text-rose-300 font-bold">💬 سوشال مدیا</span>
+                <span className="text-[10px] bg-rose-950 px-1.5 py-0.2 rounded font-mono font-bold text-rose-200">
+                  {config.strategy2.keywords.filter(k => classifyKeyword(k).category === 'social').length}
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400">اینستاگرام، یوتیوب، توییتر و تیک‌تاک</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setKeywordCategoryFilter('ai')}
+              className={`p-3 rounded-2xl border text-right transition-all flex flex-col justify-between ${
+                keywordCategoryFilter === 'ai'
+                  ? 'bg-fuchsia-900/40 border-fuchsia-500 ring-2 ring-fuchsia-500/30'
+                  : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
+              }`}
+            >
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span className="text-fuchsia-300 font-bold">🤖 هوش مصنوعی</span>
+                <span className="text-[10px] bg-fuchsia-950 px-1.5 py-0.2 rounded font-mono font-bold text-fuchsia-200">
+                  {config.strategy2.keywords.filter(k => classifyKeyword(k).category === 'ai').length}
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400">ChatGPT, Claude, Gemini, Midjourney</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setKeywordCategoryFilter('gaming')}
+              className={`p-3 rounded-2xl border text-right transition-all flex flex-col justify-between ${
+                keywordCategoryFilter === 'gaming'
+                  ? 'bg-emerald-900/40 border-emerald-500 ring-2 ring-emerald-500/30'
+                  : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
+              }`}
+            >
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span className="text-emerald-300 font-bold">🎮 گیم و پینگ</span>
+                <span className="text-[10px] bg-emerald-950 px-1.5 py-0.2 rounded font-mono font-bold text-emerald-200">
+                  {config.strategy2.keywords.filter(k => classifyKeyword(k).category === 'gaming').length}
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400">کالاف، وارزون، ولورانت، پکت‌لاس، سرور</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setKeywordCategoryFilter('speed')}
+              className={`p-3 rounded-2xl border text-right transition-all flex flex-col justify-between ${
+                keywordCategoryFilter === 'speed'
+                  ? 'bg-cyan-900/40 border-cyan-500 ring-2 ring-cyan-500/30'
+                  : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
+              }`}
+            >
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span className="text-cyan-300 font-bold">⚡ قطعی و سرعت</span>
+                <span className="text-[10px] bg-cyan-950 px-1.5 py-0.2 rounded font-mono font-bold text-cyan-200">
+                  {config.strategy2.keywords.filter(k => classifyKeyword(k).category === 'speed').length}
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400">نت قطع شده، وصل نمیشه، کندی نت</p>
+            </button>
+          </div>
+
+          {/* Search, Filter and Add Box */}
+          <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setKeywordCategoryFilter('all')}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                  keywordCategoryFilter === 'all'
+                    ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
+                    : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+                }`}
+              >
+                <span>نمایش همه ({config.strategy2.keywords.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setKeywordCategoryFilter('vpn')}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                  keywordCategoryFilter === 'vpn'
+                    ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
+                    : 'bg-slate-900 text-purple-300 hover:text-white border border-slate-800'
+                }`}
+              >
+                <span>🛡️ فیلترشکن و سرور ({config.strategy2.keywords.filter(k => classifyKeyword(k).category === 'vpn').length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setKeywordCategoryFilter('trading')}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                  keywordCategoryFilter === 'trading'
+                    ? 'bg-amber-600 text-white shadow-md shadow-amber-500/20'
+                    : 'bg-slate-900 text-amber-300 hover:text-white border border-slate-800'
+                }`}
+              >
+                <span>📈 ترید و فارکس ({config.strategy2.keywords.filter(k => classifyKeyword(k).category === 'trading').length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setKeywordCategoryFilter('social')}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                  keywordCategoryFilter === 'social'
+                    ? 'bg-rose-600 text-white shadow-md shadow-rose-500/20'
+                    : 'bg-slate-900 text-rose-300 hover:text-white border border-slate-800'
+                }`}
+              >
+                <span>💬 سوشال مدیا ({config.strategy2.keywords.filter(k => classifyKeyword(k).category === 'social').length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setKeywordCategoryFilter('ai')}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                  keywordCategoryFilter === 'ai'
+                    ? 'bg-fuchsia-600 text-white shadow-md shadow-fuchsia-500/20'
+                    : 'bg-slate-900 text-fuchsia-300 hover:text-white border border-slate-800'
+                }`}
+              >
+                <span>🤖 هوش مصنوعی ({config.strategy2.keywords.filter(k => classifyKeyword(k).category === 'ai').length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setKeywordCategoryFilter('gaming')}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                  keywordCategoryFilter === 'gaming'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'
+                    : 'bg-slate-900 text-emerald-300 hover:text-white border border-slate-800'
+                }`}
+              >
+                <span>🎮 گیمینگ و پینگ ({config.strategy2.keywords.filter(k => classifyKeyword(k).category === 'gaming').length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setKeywordCategoryFilter('speed')}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                  keywordCategoryFilter === 'speed'
+                    ? 'bg-cyan-600 text-white shadow-md shadow-cyan-500/20'
+                    : 'bg-slate-900 text-cyan-300 hover:text-white border border-slate-800'
+                }`}
+              >
+                <span>⚡ اختلال و سرعت ({config.strategy2.keywords.filter(k => classifyKeyword(k).category === 'speed').length})</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-1">
+              <div className="md:col-span-5 relative">
+                <Search className="w-4 h-4 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={keywordSearchTerm}
+                  onChange={(e) => setKeywordSearchTerm(e.target.value)}
+                  placeholder="جستجو در بین کلیدواژه‌های فعال (مثلاً: ترید، اینستا، پینگ، vmess)..."
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl pr-9 pl-8 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                />
+                {keywordSearchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setKeywordSearchTerm('')}
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+
+              <div className="md:col-span-7 flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newKeywordInput}
+                  onChange={(e) => setNewKeywordInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddKeyword()}
+                  placeholder="افزودن کلمه کلیدی دلخواه جدید..."
+                  className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddKeyword}
+                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shrink-0"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>افزودن کلمه</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Presets Quick Injection */}
+            <div className="flex flex-wrap items-center gap-2 pt-1 pb-1 border-t border-slate-800/80">
+              <span className="text-[11px] text-slate-400 font-bold shrink-0">افزودن دسته‌ای بسته‌های کلیدواژه:</span>
+              {KEYWORD_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => handleAddCategoryKeywords(preset.keywords)}
+                  className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-purple-950/60 border border-slate-800 hover:border-purple-500/50 text-slate-300 hover:text-purple-200 text-[11px] font-medium transition-all flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3 text-purple-400" />
+                  <span>{preset.title}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Keyword Pills Cloud */}
+            <div className="border border-slate-800/80 rounded-xl p-4 bg-slate-900/50 max-h-96 overflow-y-auto space-y-2">
+              <div className="flex flex-wrap gap-2">
+                {config.strategy2.keywords
+                  .filter((kw) => {
+                    const matchesSearch = !keywordSearchTerm.trim() || kw.toLowerCase().includes(keywordSearchTerm.trim().toLowerCase());
+                    if (!matchesSearch) return false;
+                    if (keywordCategoryFilter === 'all') return true;
+                    return classifyKeyword(kw).category === keywordCategoryFilter;
+                  })
+                  .map((kw) => {
+                    const info = classifyKeyword(kw);
+                    return (
+                      <span
+                        key={kw}
+                        className={`inline-flex items-center gap-2 border px-3 py-1.5 rounded-xl text-xs font-medium transition-all group shadow-sm ${info.badgeColor}`}
+                      >
+                        <span className="font-sans font-medium">{kw}</span>
+                        <span className="text-[9px] opacity-75 px-1.5 py-0.5 rounded bg-black/30 font-bold">{info.label}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveKeyword(kw)}
+                          className="opacity-50 hover:opacity-100 hover:text-rose-400 font-bold transition-colors pr-0.5 text-sm"
+                          title="حذف این کلمه"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    );
+                  })}
+              </div>
+
+              {config.strategy2.keywords.filter((kw) => {
+                const matchesSearch = !keywordSearchTerm.trim() || kw.toLowerCase().includes(keywordSearchTerm.trim().toLowerCase());
+                if (!matchesSearch) return false;
+                if (keywordCategoryFilter === 'all') return true;
+                return classifyKeyword(kw).category === keywordCategoryFilter;
+              }).length === 0 && (
+                <div className="text-center py-8 text-slate-400 text-xs">
+                  هیچ کلمه کلیدی با این جستجو یا فیلتر دسته‌بندی یافت نشد.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Interactive Tester & Live Keyword Matcher */}
+          <div className="bg-gradient-to-br from-purple-950/30 via-slate-950 to-slate-950 border border-purple-500/30 rounded-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-400" />
+                <h4 className="text-sm font-bold text-white">
+                  آزمایش و شبیه‌ساز زنده تطبیق کلمات کلیدی (Real-Time Keyword Matcher)
+                </h4>
+              </div>
+              <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-bold">
+                تست بدون ارسال
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-400">
+              یک متن پیام کاربر (مثلا در مورد ترید، اینستا، پینگ گیمینگ یا ChatGPT) تایپ کنید تا فوراً نحوه شناسایی کلمات و دسته‌بندی را مشاهده نمایید:
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="text"
+                value={customTestMessage}
+                onChange={(e) => setCustomTestMessage(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleRunSimulation()}
+                placeholder="متن پیام کاربر در گروه را اینجا بنویسید..."
+                className="flex-1 bg-slate-900 border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+              />
+              <button
+                type="button"
+                onClick={handleRunSimulation}
+                disabled={isSimulating}
+                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-50"
+              >
+                {isSimulating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                <span>بررسی تطبیق کلمات</span>
+              </button>
+            </div>
+
+            {simulationResult && (
+              <div className="bg-slate-900 border border-purple-500/30 rounded-xl p-4 space-y-3 animate-in fade-in">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <span className="text-xs font-bold text-white flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>نتیجه تحلیل هوشمند: {simulationResult.isLead ? '✅ لید و مشتری بالقوه شناسایی شد' : '❌ بدون تقاضا'}</span>
+                  </span>
+                  <span className="text-[11px] bg-purple-950 text-purple-200 px-2 py-0.5 rounded-full font-bold">
+                    دسته‌بندی: {simulationResult.detectedCategory}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1">
+                    <span className="text-[10px] text-slate-400 block font-bold">کلمات کلیدی منطبق شده:</span>
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {simulationResult.matchedKeywords && simulationResult.matchedKeywords.length > 0 ? (
+                        simulationResult.matchedKeywords.map((k: string, idx: number) => (
+                          <span key={idx} className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold text-xs border border-purple-500/30">
+                            {k}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-slate-400 text-xs">کلمه کلیدی خاصی در متن یافت نشد</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1">
+                    <span className="text-[10px] text-slate-400 block font-bold">پاسخ پیشنهادی جهت ریپلای گروه:</span>
+                    <p className="text-xs text-slate-200 leading-relaxed font-sans">{simulationResult.groupReplyText || 'بدون پاسخ گروهی'}</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
         </div>

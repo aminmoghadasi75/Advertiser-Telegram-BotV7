@@ -11,6 +11,7 @@ import { MonitoringConsoleCard } from './components/MonitoringConsoleCard';
 import { BroadcastReportCard } from './components/BroadcastReportCard';
 import { AnonymousBotsCard } from './components/AnonymousBotsCard';
 import { GroupPromotionStrategiesCard } from './components/GroupPromotionStrategiesCard';
+import { UnifiedAntiBanCommandBar } from './components/UnifiedAntiBanCommandBar';
 import { LiveTelemetryHUD } from './components/LiveTelemetryHUD';
 import { LogsConsole } from './components/LogsConsole';
 import {
@@ -517,11 +518,25 @@ export default function App() {
 
   // Stop Smart Group Join Engine
   const handleStopSmartJoin = async () => {
+    // Immediate optimistic state update to unstuck UI button instantly
+    setAppState(prev => prev ? ({
+      ...prev,
+      activeGroupJoinProgress: prev.activeGroupJoinProgress ? {
+        ...prev.activeGroupJoinProgress,
+        isRunning: false,
+      } : undefined,
+      dripJoinConfig: prev.dripJoinConfig ? {
+        ...prev.dripJoinConfig,
+        enabled: false,
+      } : prev.dripJoinConfig,
+    }) : prev);
+
     try {
       await fetch('/api/groups/smart-join-stop', { method: 'POST' });
-      await fetchState();
     } catch (err: any) {
-      console.error(err);
+      console.error('Stop smart join request error:', err);
+    } finally {
+      await fetchState();
     }
   };
 
@@ -901,112 +916,24 @@ export default function App() {
         {activeMainTab === 'group_broadcast' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             
-            {/* Top Dedicated Broadcast Hub Banner */}
-            <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950/50 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl space-y-4">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                
-                {/* Left: Module Summary */}
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center flex-shrink-0">
-                    <Megaphone className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-base text-white flex items-center gap-2">
-                      کنترل پنل ارسال تبلیغات به گروه‌های تلگرام
-                      {appState.scheduler.isAutoRunActive && (
-                        <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
-                          ارسال خودکار روشن است
-                        </span>
-                      )}
-                    </h2>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      ارسال هوشمند پست‌ها و بنرها با رعایت فاصله زمانی، جلوگیری از بلاک و تقسیم کار بین اکانت‌ها
-                    </p>
-                  </div>
-                </div>
-
-                {/* Right: Broadcast Master Action Button Cluster */}
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  
-                  {/* Master Auto-Run Switch */}
-                  <div className="flex items-center gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
-                    <span className="text-xs text-slate-300 font-medium px-2 flex items-center gap-1.5">
-                      <Power className={`w-3.5 h-3.5 ${appState.scheduler.isAutoRunActive ? 'text-emerald-400 animate-pulse' : 'text-slate-500'}`} />
-                      زمان‌بندی خودکار:
-                    </span>
-                    <button
-                      onClick={() => handleToggleAutoRun(!appState.scheduler.isAutoRunActive)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        appState.scheduler.isAutoRunActive
-                          ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-emerald-500/20'
-                          : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white'
-                      }`}
-                    >
-                      <span>{appState.scheduler.isAutoRunActive ? 'فعال ✓' : 'غیرفعال'}</span>
-                    </button>
-                  </div>
-
-                  {/* Immediate Start / Stop Broadcast Button */}
-                  {isBroadcastingActive ? (
-                    <button
-                      onClick={handleStopBroadcast}
-                      disabled={isStoppingBroadcast}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white text-xs font-bold shadow-lg shadow-rose-600/30 transition-all active:scale-95 animate-pulse"
-                    >
-                      <StopCircle className="w-4 h-4" />
-                      <span>{isStoppingBroadcast ? 'در حال لغو...' : 'توقف فوری ارسال'}</span>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleSendNow}
-                      disabled={!hasConnectedAccount || appState.groups.length === 0}
-                      className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg active:scale-95 ${
-                        hasConnectedAccount && appState.groups.length > 0
-                          ? 'bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-400 hover:to-blue-500 text-white shadow-sky-500/25'
-                          : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
-                      }`}
-                    >
-                      <Send className="w-4 h-4" />
-                      <span>شروع ارسال به گروه‌ها</span>
-                    </button>
-                  )}
-
-                </div>
-
-              </div>
-
-              {/* Status Metric Pills */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-800/80 text-xs">
-                <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800/80 text-center">
-                  <div className="text-[11px] text-slate-400">گروه‌های فعال برای ارسال</div>
-                  <div className="text-sm font-bold text-sky-400 mt-0.5">
-                    {activeGroupsCount.toLocaleString('fa-IR')} از {appState.groups.length.toLocaleString('fa-IR')}
-                  </div>
-                </div>
-
-                <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800/80 text-center">
-                  <div className="text-[11px] text-slate-400">فاصله زمانی هر ارسال</div>
-                  <div className="text-sm font-bold text-white mt-0.5">
-                    هر {appState.scheduler.intervalMinutes} دقیقه
-                  </div>
-                </div>
-
-                <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800/80 text-center">
-                  <div className="text-[11px] text-slate-400">کل ارسال‌های موفق</div>
-                  <div className="text-sm font-bold text-emerald-400 mt-0.5 font-mono">
-                    {appState.scheduler.totalSuccessCount.toLocaleString('fa-IR')}
-                  </div>
-                </div>
-
-                <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800/80 text-center">
-                  <div className="text-[11px] text-slate-400">سقف ارسال ۲۴ ساعته</div>
-                  <div className="text-sm font-bold text-indigo-300 mt-0.5 font-mono">
-                    {(appState.scheduler.dailySentCount || 0).toLocaleString('fa-IR')} / {appState.scheduler.dailyLimit.toLocaleString('fa-IR')}
-                  </div>
-                </div>
-              </div>
-
-            </div>
+            {/* Unified 3-Phase Anti-Ban Command & Control Hub */}
+            <UnifiedAntiBanCommandBar
+              groups={appState.groups}
+              accounts={appState.accounts}
+              scheduler={appState.scheduler}
+              groupPromotionStrategy={appState.groupPromotionStrategy}
+              isBroadcastingActive={isBroadcastingActive}
+              isStoppingBroadcast={isStoppingBroadcast}
+              activeGroupJoinProgress={appState.activeGroupJoinProgress}
+              onToggleAutoRun={handleToggleAutoRun}
+              onStartBroadcast={handleSendNow}
+              onStopBroadcast={handleStopBroadcast}
+              onSendNow={handleSendNow}
+              onStartSmartJoin={handleStartSmartJoin}
+              onStopSmartJoin={handleStopSmartJoin}
+              onSwitchStrategy={handleSwitchGroupStrategy}
+              onNavigateTab={(subTab) => setGroupSubTab(subTab as any)}
+            />
 
             {/* Live Mission Control Room & Telemetry HUD */}
             {isBroadcastingActive && appState.activeBroadcastProgress && (

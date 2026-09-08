@@ -124,6 +124,8 @@ export interface TargetGroup {
   isPersianVerified?: boolean; // تایید ۱۰۰٪ زبان فارسی و جامعه مخاطبان ایرانی
   languageDetected?: string; // زبان شناسایی شده (fa, ar, hi, en, ru, ...)
   nonPersianPurgedAt?: string; // زمان لفت دادن و پاکسازی به دلیل غیرفارسی بودن
+  isPersonalProtected?: boolean; // نشان‌دهنده سپر امنیتی چت شخصی/خانوادگی (ارسال به این گروه اکیداً ممنوع است)
+  isUserApprovedTarget?: boolean; // گروه هدف تاییدشده در استخر اختصاصی تبلیغات
   captchaDetails?: {
     botName?: string;
     challengeText?: string;
@@ -281,6 +283,8 @@ export interface SchedulerConfig {
   nightModeEndHour?: number; // Default 7 (7 AM)
   onlyPromotionalGroups?: boolean; // Send ads only to groups marked as promotional/exchange
   onlyPersianVerifiedGroups?: boolean; // ارسال انحصاری ۱۰۰٪ به گروه‌های تاییدشده فارسی و ایرانی جهت حفظ سهمیه
+  strictTargetPoolOnly?: boolean; // ارسال منحصراً و فقط به استخر گروه‌های هدف ثبت‌شده (سپر ضد نفوذ به چت‌های خارج از استخر)
+  protectPersonalChats?: boolean; // سپر محافظت ۱۰۰٪ از چت‌ها و گروه‌های شخصی، دوستانه و خانوادگی
   multiAccountDispatchMode?: 'parallel_multichannel' | 'sequential_rotation'; // ارسال همزمان بین اکانت‌ها یا چرخش نوبتی
   campaignRotationMode?: 'round_robin' | 'category_match' | 'first_active'; // استراتژی چرخش کمپین‌ها بین گروه‌ها
   maxConcurrentAccounts?: number; // سقف تعداد اکانت‌های همزمان فعال
@@ -944,6 +948,8 @@ export interface GroupPromotionStrategyConfig {
     neverRepeatPvToSameUser?: boolean; // تضمین ۱۰۰٪ عدم ارسال مجدد به کاربری که قبلاً به او پیامی در پی‌وی ارسال شده (مادام‌العمر - فوق‌العاده حیاتی برای ضد ریپورت)
     checkTelegramHistoryBeforePv?: boolean; // استعلام زنده سابقه پیام از سرور تلگرام قبل از ارسال پی‌وی
     maxRepliesPerGroupPerHour: number; // سقف پاسخ در یک گروه در ساعت جهت جلوگیری از اسپم (مثلا ۵ پیام)
+    autoSkipLockedRestrictedGroups?: boolean; // رد کردن خودکار و بدون اتلاف وقت گروه‌های قفل‌شده، فقط ادمین یا نیازمند بررسی
+    scannerPresetMode?: 'turbo' | 'balanced' | 'safe'; // پروفایل سرعت و کول‌داون شنود
     useAiReasoning: boolean; // استفاده از هوش مصنوعی برای تولید پاسخ متناسب با پیام کاربر
     customGroupReplyTemplate?: string;
     customPvMessageTemplate?: string;
@@ -954,6 +960,7 @@ export interface GroupPromotionStrategyConfig {
     totalPvRepeatsPrevented?: number; // تعداد کل مواردی که به دلیل داشتن سابقه قبلی پی‌وی لغو شد تا اکانت ریپورت نشود
     totalInboundPvRepliesSent?: number; // تعداد کل پاسخ‌های داده شده به چت‌های خصوصی ورودی
     lastLeadDetectedAt?: string;
+    lastScannedMessageAt?: string;
   };
 
   // دیتابیس ثبت دائمی کاربران پیام‌داده‌شده در پی‌وی جهت ممانعت قطعی از ارسال تکراری
