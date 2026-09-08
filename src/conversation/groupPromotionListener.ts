@@ -331,6 +331,23 @@ const ACCOUNT_TRADE_EXCLUSIONS = [
   'قیمت اکانت', 'کانال فروشی', 'پیج فروشی', 'چیکن', 'الایت', 'محبوبیت', 'استارت میزنین'
 ];
 
+// Competitor seller broadcast indicators that should NOT be treated as customer buyer leads
+const COMPETITOR_SELLER_EXCLUSIONS = [
+  'فروش فیلترشکن', 'فروش وی پی ان', 'فروش وی‌پی‌ان', 'فروش vpn', 'فروش کانفیگ', 'فروش سرور',
+  'فروش اکانت v2ray', 'فروش اشتراک', 'جهت خرید به پیوی', 'جهت خرید به ایدی', 'جهت خرید پیام',
+  'برای خرید پیام', 'برای خرید به پیوی', 'خرید آنلاین از سایت', 'درگاه مستقیم', 'تحویل فوری بعد از پرداخت',
+  'پکیج ماهانه', 'اشتراک ماهانه', 'اشتراک سه‌ماهه', 'کد تخفیف', 'تخفیف ویژه', 'کانال تلگرامی ما',
+  'عضو کانال ما بشید', 'عضو چنل ما بشید', 'کانفیگ رایگان در کانال', 'پروکسی ها در کانال',
+  'کانال پروکسی', 'ربات خرید', 'آیدی ربات ما', 'فروش پنل', 'پنل v2ray', 'نمایندگی v2ray', 'نمایندگی فروش'
+];
+
+const GENUINE_CUSTOMER_NEED_INDICATORS = [
+  'کسی داره', 'کسی سراغ داره', 'چی خوبه', 'چی وصله', 'چی پیشنهاد میدید', 'چی پیشنهاد میکنید',
+  'وصل نمیشه', 'قطع شده', 'قطعه', 'کار نمیکنه', 'باز نمیشه', 'لود نمیشه', 'پینگم بالاست',
+  'پینگم', 'لگ دارم', 'کمک کنید', 'راهنمایی کنید', 'فیلترشکن خوب', 'وی پی ان خوب', 'کانفیگ خوب',
+  'میخوام بخرم', 'از کجا بخرم', 'چیکار کنم', 'چطوری وصل شم', 'برای آیفون چی وصله', 'برای همراه اول'
+];
+
 /**
  * Detects if a message contains intent/need for VPN, internet speed, AI access, etc.
  */
@@ -364,6 +381,19 @@ export function detectLeadInMessage(
   const hasExplicitVpnTerms = TAXONOMY.vpn_filter.some(kw => normalized.includes(kw.toLowerCase()));
   if (isTradeExcluded && !hasExplicitVpnTerms) {
     // This is gaming account trading, NOT a VPN or networking lead
+    return {
+      isMatch: false,
+      category: 'general_lead',
+      matchedKeywords: [],
+      confidence: 0,
+    };
+  }
+
+  // Filter out competitor seller advertisements (ads for other VPN/proxy channels/bots)
+  const isCompetitorSellerAd = COMPETITOR_SELLER_EXCLUSIONS.some(term => normalized.includes(term));
+  const hasGenuineCustomerNeed = GENUINE_CUSTOMER_NEED_INDICATORS.some(ind => normalized.includes(ind));
+  if (isCompetitorSellerAd && !hasGenuineCustomerNeed) {
+    // This is another seller advertising their VPN/channel, not an inquiring buyer
     return {
       isMatch: false,
       category: 'general_lead',

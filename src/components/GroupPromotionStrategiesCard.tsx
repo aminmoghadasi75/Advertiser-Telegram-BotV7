@@ -1844,6 +1844,36 @@ export const GroupPromotionStrategiesCard: React.FC<GroupPromotionStrategiesCard
               />
             </div>
 
+            {/* 2.0. Direct Outbound Message to PV (Disabled per user choice) */}
+            <div className="p-4 rounded-2xl bg-slate-950/70 border border-purple-500/30 ring-1 ring-purple-500/20 flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Send className="w-4 h-4 text-purple-400" />
+                  <span className="text-xs font-bold text-white">
+                    ارسال پیام به پی‌وی لیدها (پیام خصوصی)
+                  </span>
+                  {!config.strategy2.sendDirectMessage ? (
+                    <span className="text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded font-bold">
+                      غیرفعال (تمرکز ۱۰۰٪ روی ریپلای گروه)
+                    </span>
+                  ) : (
+                    <span className="text-[9px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1.5 py-0.2 rounded font-bold">
+                      فعال
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  ارسال پیام به پی‌وی شخص نیازمند؛ با توجه به اینکه ریپلای گروه عملکرد کافی و مطلوبی دارد، این گزینه غیرفعال است تا اکانت‌ها محدود نشوند.
+                </p>
+              </div>
+              <input
+                type="checkbox"
+                checked={Boolean(config.strategy2.sendDirectMessage)}
+                onChange={(e) => handleStrategy2Toggle('sendDirectMessage', e.target.checked)}
+                className="w-4 h-4 mt-1 rounded text-purple-600 bg-slate-900 border-slate-700 focus:ring-purple-500"
+              />
+            </div>
+
             {/* 2. Multi-Bubble PV DM */}
             <div className="p-4 rounded-2xl bg-slate-950/70 border border-purple-500/30 ring-1 ring-purple-500/20 flex items-start justify-between gap-3">
               <div className="space-y-1">
