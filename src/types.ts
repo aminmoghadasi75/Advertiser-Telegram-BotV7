@@ -931,6 +931,15 @@ export interface GroupPromotionStrategyConfig {
     humanChatStyleInGroup?: boolean; // لحن فوق‌العاده کوتاه و کاملاً انسانی (مشابه اتوماسیون چت ناشناس: ۳ الی ۷ کلمه بدون علائم نگارشی)
     maxConsecutiveRepliesPerUser?: number; // سقف تعداد پاسخ‌های متوالی به یک کاربر در گروه (پیش‌فرض: ۵ دور)
     sendBannerInGroupReply?: boolean; // ارسال تصویر و بنر تعرفه‌ها بعد از توضیحات ریپلای در گروه
+    bannerDeliveryMode?: 'rich_photo_caption' | 'sequential_text_then_banner'; // شیوه ارسال: عکس بنر با کپشن متن پاسخ (حرفه‌ای‌ترین حالت ۱ پیامی) یا ارسال متوالی
+    bannerTriggerStrategy?: 'all_qualified_leads' | 'high_intent_and_pricing' | 'batch_and_first_touch'; // استراتژی فعال‌سازی بنر
+    bannerCooldownMinutes?: number; // حداقل فاصله زمانی ارسال بنر در یک گروه (دقیقه، پیش‌فرض ۳، ۰ برای ارسال روی همه لیدها)
+    sendBannerOnlyOnPriceRequest?: boolean; // فیلد قدیمی جهت سازگاری
+    bannerCooldownHours?: number; // فیلد قدیمی جهت سازگاری
+    enableBatchLeadReplies?: boolean; // تجمیع لیدهای همزمان در گروه و ارسال یک پاسخ حرفه‌ای مشترک با منشن آیدی‌ها
+    batchLeadMaxUsers?: number; // حداکثر لیدهای تجمیعی در یک پیام واحد (حداکثر ۱۰ کاربر)
+    batchLeadWaitSeconds?: number; // پنجره زمانی انتظار جهت تجمیع لیدها قبل از ارسال پاسخ (ثانیه، پیش‌فرض: ۲۵ ثانیه)
+    requireUsernameForBatch?: boolean; // شرط داشتن آیدی تلگرام برای تجمیع منشن (کاربران بدون آیدی منشن نمیشوند)
     sendDirectMessage: boolean; // ارسال پیام خصوصی به پی‌وی کاربر
     sendBannerInDirectMessage: boolean; // ارسال بنر تبلیغاتی کمپین در پی‌وی
     friendStylePvTone: boolean; // لحن صمیمی و دوستانه مانند فرد معمولی

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Users,
   Plus,
@@ -122,6 +122,8 @@ export const TargetGroupsCard: React.FC<TargetGroupsCardProps> = ({
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>('all');
   const [leavingDuplicateId, setLeavingDuplicateId] = useState<string | null>(null);
   const [showDripSettingsModal, setShowDripSettingsModal] = useState<boolean>(false);
+  const showDripSettingsModalRef = useRef(false);
+  showDripSettingsModalRef.current = showDripSettingsModal;
   const [dripMaxJoins, setDripMaxJoins] = useState<number>(8);
   const [dripInterval, setDripInterval] = useState<number>(20);
 
@@ -273,8 +275,10 @@ export const TargetGroupsCard: React.FC<TargetGroupsCardProps> = ({
       const data = await res.json();
       if (data.config) {
         setDripConfig(data.config);
-        setDripMaxJoins(data.config.maxJoinsPerAccountPerDay || 8);
-        setDripInterval(data.config.intervalMinutes || 20);
+        if (!showDripSettingsModalRef.current) {
+          setDripMaxJoins(data.config.maxJoinsPerAccountPerDay || 8);
+          setDripInterval(data.config.intervalMinutes || 20);
+        }
       }
     } catch (e) {
       console.error('Failed to fetch drip status:', e);
@@ -335,11 +339,15 @@ export const TargetGroupsCard: React.FC<TargetGroupsCardProps> = ({
         }),
       });
       const data = await res.json();
-      if (data.config) setDripConfig(data.config);
+      if (data.config) {
+        setDripConfig(data.config);
+        setDripMaxJoins(data.config.maxJoinsPerAccountPerDay);
+        setDripInterval(data.config.intervalMinutes);
+      }
       setShowDripSettingsModal(false);
-      alert('تنظیمات عضویت امن و قطره‌چکانی با موفقیت ذخیره شد.');
+      showNotification('success', `✅ تنظیمات عضویت قطره‌چکانی با موفقیت ذخیره شد: سقف روزانه ${data.config?.maxJoinsPerAccountPerDay || dripMaxJoins} گروه با فاصله ${data.config?.intervalMinutes || dripInterval} دقیقه.`);
     } catch (err: any) {
-      alert('خطا در ذخیره تنظیمات: ' + (err.message || err));
+      showNotification('error', 'خطا در ذخیره تنظیمات: ' + (err.message || err));
     }
   };
 
@@ -1230,7 +1238,11 @@ export const TargetGroupsCard: React.FC<TargetGroupsCardProps> = ({
 
               <button
                 type="button"
-                onClick={() => setShowDripSettingsModal(true)}
+                onClick={() => {
+                  setDripMaxJoins(dripConfig?.maxJoinsPerAccountPerDay || 8);
+                  setDripInterval(dripConfig?.intervalMinutes || 20);
+                  setShowDripSettingsModal(true);
+                }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs font-medium transition-all"
               >
                 <Sliders className="w-3.5 h-3.5 text-slate-400" />
@@ -1519,13 +1531,13 @@ export const TargetGroupsCard: React.FC<TargetGroupsCardProps> = ({
                 <input
                   type="number"
                   min="1"
-                  max="20"
+                  max="100"
                   value={dripMaxJoins}
                   onChange={(e) => setDripMaxJoins(Number(e.target.value))}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:border-sky-500 focus:outline-none"
                 />
                 <span className="text-[10px] text-slate-500 block">
-                  پیشنهاد ایمن برای اکانت معمولی: ۵ الی ۸ گروه در روز.
+                  مقدار پیشنهادی: ۸ الی ۱۵ گروه در روز (امکان تنظیم تا ۱۰۰ گروه بر اساس کیفیت و قدمت اکانت).
                 </span>
               </div>
 
@@ -1535,14 +1547,14 @@ export const TargetGroupsCard: React.FC<TargetGroupsCardProps> = ({
                 </label>
                 <input
                   type="number"
-                  min="5"
-                  max="120"
+                  min="1"
+                  max="360"
                   value={dripInterval}
                   onChange={(e) => setDripInterval(Number(e.target.value))}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:border-sky-500 focus:outline-none"
                 />
                 <span className="text-[10px] text-slate-500 block">
-                  پیشنهاد: ۱۵ الی ۳۰ دقیقه (همراه با انحراف تصادفی ±۵ دقیقه جهت رفتار انسانی).
+                  پیشنهاد: ۱۵ الی ۳۰ دقیقه (همراه با انحراف تصادفی ±۵ دقیقه جهت شبیه‌سازی رفتار انسانی).
                 </span>
               </div>
             </div>

@@ -1820,28 +1820,246 @@ export const GroupPromotionStrategiesCard: React.FC<GroupPromotionStrategiesCard
               />
             </div>
 
-            {/* 1.5. Group Reply Banner */}
-            <div className="p-4 rounded-2xl bg-slate-950/70 border border-sky-500/30 ring-1 ring-sky-500/20 flex items-start justify-between gap-3">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <ImageIcon className="w-4 h-4 text-sky-400" />
-                  <span className="text-xs font-bold text-white">
-                    ارسال عکس/بنر بعد از ریپلای گروه
-                  </span>
-                  <span className="text-[9px] bg-sky-500/30 text-sky-200 px-1.5 py-0.2 rounded font-bold">
-                    تعرفه‌ها
-                  </span>
+            {/* 1.5. Group Reply Banner Engine */}
+            <div className="p-4 rounded-2xl bg-slate-950/70 border border-sky-500/30 ring-1 ring-sky-500/20 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4 text-sky-400" />
+                    <span className="text-xs font-bold text-white">
+                      موتور هوشمند ارسال بنر تبلیغاتی و تعرفه
+                    </span>
+                    <span className="text-[9px] bg-sky-500/30 text-sky-200 px-1.5 py-0.5 rounded font-bold border border-sky-500/40">
+                      حداکثر جذب کاربر
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    امکان ارسال بنر تصویری حرفه‌ای همراه با کپشن پاسخ یا به صورت مجزا، برای جلب توجه حداکثری مخاطبان هدف در گروه‌ها.
+                  </p>
                 </div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
-                  پس از ارسال توضیحات ریپلای، تصویر بنر پلن‌ها همراه با آیدی پشتیبانی با مکث کوتاه در گروه ارسال می‌شود.
-                </p>
+                <input
+                  type="checkbox"
+                  checked={config.strategy2.sendBannerInGroupReply !== false}
+                  onChange={(e) => handleStrategy2Toggle('sendBannerInGroupReply', e.target.checked)}
+                  className="w-4 h-4 mt-1 rounded text-sky-600 bg-slate-900 border-slate-700 focus:ring-sky-500"
+                />
               </div>
-              <input
-                type="checkbox"
-                checked={config.strategy2.sendBannerInGroupReply !== false}
-                onChange={(e) => handleStrategy2Toggle('sendBannerInGroupReply', e.target.checked)}
-                className="w-4 h-4 mt-1 rounded text-sky-600 bg-slate-900 border-slate-700 focus:ring-sky-500"
-              />
+
+              {config.strategy2.sendBannerInGroupReply !== false && (
+                <div className="pt-2.5 border-t border-slate-800/80 space-y-3">
+                  {/* Banner Delivery Mode */}
+                  <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="text-[11px] font-bold text-slate-200">
+                        شیوه نمایش و ارسال بنر (Delivery Mode)
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleStrategy2Toggle('bannerDeliveryMode', 'rich_photo_caption')}
+                        className={`p-2 rounded-lg text-right border transition-all ${
+                          (config.strategy2.bannerDeliveryMode || 'rich_photo_caption') === 'rich_photo_caption'
+                            ? 'bg-sky-500/20 border-sky-500/60 text-sky-200 ring-1 ring-sky-500/40'
+                            : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="text-[11px] font-bold">🖼️ پیام غنی (عکس + کپشن پاسخ)</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5 leading-tight">
+                          عکس بنر همراه با متن پاسخ به عنوان یک پیام واحد (حداکثر جذابیت و تاثیر بدون حس اسپم)
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleStrategy2Toggle('bannerDeliveryMode', 'sequential_text_then_banner')}
+                        className={`p-2 rounded-lg text-right border transition-all ${
+                          config.strategy2.bannerDeliveryMode === 'sequential_text_then_banner'
+                            ? 'bg-sky-500/20 border-sky-500/60 text-sky-200 ring-1 ring-sky-500/40'
+                            : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="text-[11px] font-bold">💬 ارسال متوالی (متن + عکس مجزا)</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5 leading-tight">
+                          ابتدا پاسخ متنی ریپلای می‌شود و بلافاصله تصویر بنر در پیام جداگانه ارسال می‌گردد
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Banner Trigger Strategy */}
+                  <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <Flame className="w-3.5 h-3.5 text-rose-400" />
+                      <span className="text-[11px] font-bold text-slate-200">
+                        استراتژی تحریک و شرط ارسال بنر
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleStrategy2Toggle('bannerTriggerStrategy', 'all_qualified_leads')}
+                        className={`p-2 rounded-lg text-right border transition-all ${
+                          (config.strategy2.bannerTriggerStrategy || 'all_qualified_leads') === 'all_qualified_leads'
+                            ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-200 ring-1 ring-emerald-500/40'
+                            : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="text-[11px] font-bold">🚀 تمام لیدهای واجد شرایط</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5 leading-tight">
+                          حداکثر نرخ تبدیل؛ بنر روی تمام پاسخ‌های لید ارسال می‌شود
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleStrategy2Toggle('bannerTriggerStrategy', 'batch_and_first_touch')}
+                        className={`p-2 rounded-lg text-right border transition-all ${
+                          config.strategy2.bannerTriggerStrategy === 'batch_and_first_touch'
+                            ? 'bg-indigo-500/20 border-indigo-500/60 text-indigo-200 ring-1 ring-indigo-500/40'
+                            : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="text-[11px] font-bold">👥 تجمیعی و اولین برخورد</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5 leading-tight">
+                          پاسخ‌های چندکاربره و شروع مکالمات جدید با لید
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleStrategy2Toggle('bannerTriggerStrategy', 'high_intent_and_pricing')}
+                        className={`p-2 rounded-lg text-right border transition-all ${
+                          config.strategy2.bannerTriggerStrategy === 'high_intent_and_pricing'
+                            ? 'bg-amber-500/20 border-amber-500/60 text-amber-200 ring-1 ring-amber-500/40'
+                            : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="text-[11px] font-bold">💰 استعلام قیمت و خرید</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5 leading-tight">
+                          صرفاً در سوالات مرتبط با هزینه، تعرفه، خرید و تست
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Cooldown Settings (Minutes) */}
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-sky-400" />
+                        <span className="text-[11px] font-bold text-slate-200">
+                          فاصله زمانی محافظتی بین بنرها در هر گروه (دقیقه)
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 leading-normal">
+                        برای جلوگیری از بلاک تلگرام؛ مقدار ۰ یعنی ارسال روی ۱۰۰٪ لیدها بدون محدودیت زمانی.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min={0}
+                        max={360}
+                        value={config.strategy2.bannerCooldownMinutes ?? 3}
+                        onChange={(e) => handleStrategy2Toggle('bannerCooldownMinutes', Math.max(0, parseInt(e.target.value, 10) || 0))}
+                        className="w-14 bg-slate-950 border border-slate-700 rounded-lg p-1 text-center text-xs font-bold text-white font-mono"
+                      />
+                      <span className="text-[10px] text-slate-400">دقیقه</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 1.6. Multi-Lead Batch Replies ( تجمیع لیدها در یک پاسخ واحد حرفه‌ای ) */}
+            <div className="p-4 rounded-2xl bg-slate-950/70 border border-indigo-500/30 ring-1 ring-indigo-500/20 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-indigo-400" />
+                    <span className="text-xs font-bold text-white">
+                      تجمیع هوشمند چند لید در یک پاسخ واحد با منشن همزمان
+                    </span>
+                    <span className="text-[9px] bg-indigo-500/30 text-indigo-200 border border-indigo-500/40 px-1.5 py-0.2 rounded font-bold">
+                      بهینه‌سازی تبلیغ و ضد اسپم
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    به جای ارسال ریپلای‌های متوالی و مجزا، چند لید شناسایی‌شده در گروه را تجمیع کرده و با یک پاسخ حرفه‌ای که نیاز آنها را پوشش می‌دهد همزمان منشن می‌کند.
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={config.strategy2.enableBatchLeadReplies !== false}
+                  onChange={(e) => handleStrategy2Toggle('enableBatchLeadReplies', e.target.checked)}
+                  className="w-4 h-4 mt-1 rounded text-indigo-600 bg-slate-900 border-slate-700 focus:ring-indigo-500"
+                />
+              </div>
+
+              {config.strategy2.enableBatchLeadReplies !== false && (
+                <div className="pt-2.5 border-t border-slate-800/80 space-y-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
+                      <div>
+                        <span className="text-[11px] font-bold text-slate-200 block">
+                          حداکثر لید در هر پاسخ
+                        </span>
+                        <span className="text-[10px] text-slate-400">سقف مجاز: تا ۱۰ کاربر</span>
+                      </div>
+                      <input
+                        type="number"
+                        min={2}
+                        max={10}
+                        value={config.strategy2.batchLeadMaxUsers || 10}
+                        onChange={(e) => handleStrategy2Toggle('batchLeadMaxUsers', Math.min(10, Math.max(2, parseInt(e.target.value, 10) || 10)))}
+                        className="w-14 bg-slate-950 border border-slate-700 rounded-lg p-1 text-center text-xs font-bold text-white font-mono"
+                      />
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
+                      <div>
+                        <span className="text-[11px] font-bold text-slate-200 block">
+                          پنجره انتظار تجمیع
+                        </span>
+                        <span className="text-[10px] text-slate-400">جمع‌آوری لیدها در گروه</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          min={5}
+                          max={120}
+                          value={config.strategy2.batchLeadWaitSeconds || 25}
+                          onChange={(e) => handleStrategy2Toggle('batchLeadWaitSeconds', Math.max(5, parseInt(e.target.value, 10) || 25))}
+                          className="w-14 bg-slate-950 border border-slate-700 rounded-lg p-1 text-center text-xs font-bold text-white font-mono"
+                        />
+                        <span className="text-[10px] text-slate-400">ثانیه</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-[11px] font-bold text-slate-200">
+                          صرفاً منشن کاربران دارای آیدی عمومی (@username)
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 leading-normal">
+                        کاربرانی که آیدی عمومی ندارند در تجمیع منشن نشده و نادیده گرفته می‌شوند تا بازدهی پیام حداکثر باشد.
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={config.strategy2.requireUsernameForBatch !== false}
+                      onChange={(e) => handleStrategy2Toggle('requireUsernameForBatch', e.target.checked)}
+                      className="w-4 h-4 rounded text-emerald-600 bg-slate-950 border-slate-700 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* 2.0. Direct Outbound Message to PV (Disabled per user choice) */}

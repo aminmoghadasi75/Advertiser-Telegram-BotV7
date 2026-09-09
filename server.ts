@@ -58,6 +58,7 @@ import {
   generateInboundPvReply,
   generateGeminiInboundPvReply,
   processGroupLeadConversationTurn,
+  processGroupMultiLeadBatchTurn,
   getGroupConversationEntry,
   clearGroupConversationEntry,
 } from './src/conversation/groupPromotionListener.js';
@@ -274,6 +275,31 @@ const PUBLIC_UPLOADS_DIR = path.join(process.cwd(), 'public', 'uploads');
 if (!fs.existsSync(PUBLIC_UPLOADS_DIR)) {
   fs.mkdirSync(PUBLIC_UPLOADS_DIR, { recursive: true });
 }
+
+// Ensure all uploads are synchronized bidirectionally between uploads and public/uploads
+try {
+  if (fs.existsSync(UPLOADS_DIR)) {
+    const files = fs.readdirSync(UPLOADS_DIR);
+    for (const f of files) {
+      const src = path.join(UPLOADS_DIR, f);
+      const dst = path.join(PUBLIC_UPLOADS_DIR, f);
+      if (!fs.existsSync(dst) && fs.statSync(src).isFile()) {
+        fs.copyFileSync(src, dst);
+      }
+    }
+  }
+  if (fs.existsSync(PUBLIC_UPLOADS_DIR)) {
+    const files = fs.readdirSync(PUBLIC_UPLOADS_DIR);
+    for (const f of files) {
+      const src = path.join(PUBLIC_UPLOADS_DIR, f);
+      const dst = path.join(UPLOADS_DIR, f);
+      if (!fs.existsSync(dst) && fs.statSync(src).isFile()) {
+        fs.copyFileSync(src, dst);
+      }
+    }
+  }
+} catch (syncUploadsErr) {}
+
 app.use('/uploads', express.static(UPLOADS_DIR));
 app.use('/uploads', express.static(PUBLIC_UPLOADS_DIR));
 
@@ -369,6 +395,8 @@ app.get('/api/config/validate', (req, res) => {
 
 // Memory / File Persistence
 const DATA_FILE = path.join(process.cwd(), 'telegram_promoter_data.json');
+const BACKUP_DATA_FILE = path.join(process.cwd(), 'backup_data.json');
+const SEED_DATA_FILE = path.join(process.cwd(), 'seed_data.json');
 
 const defaultGroupPromotionStrategy: GroupPromotionStrategyConfig = {
   activeStrategy: 'periodic_broadcast',
@@ -598,6 +626,12 @@ const defaultGroupPromotionStrategy: GroupPromotionStrategyConfig = {
     humanChatStyleInGroup: true,
     maxConsecutiveRepliesPerUser: 5,
     sendBannerInGroupReply: true,
+    sendBannerOnlyOnPriceRequest: true,
+    bannerCooldownHours: 4,
+    enableBatchLeadReplies: true,
+    batchLeadMaxUsers: 5,
+    batchLeadWaitSeconds: 25,
+    requireUsernameForBatch: true,
     sendDirectMessage: false,
     sendBannerInDirectMessage: false,
     friendStylePvTone: true,
@@ -1358,7 +1392,12 @@ let appState: AppState = {
 
 function saveData() {
   try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(appState, null, 2), 'utf-8');
+    const jsonStr = JSON.stringify(appState, null, 2);
+    fs.writeFileSync(DATA_FILE, jsonStr, 'utf-8');
+    try {
+      fs.writeFileSync(BACKUP_DATA_FILE, jsonStr, 'utf-8');
+      fs.writeFileSync(SEED_DATA_FILE, jsonStr, 'utf-8');
+    } catch (bErr) {}
     return true;
   } catch (e) {
     console.error('Failed to save data file:', e);
@@ -1403,181 +1442,188 @@ function addToNonPersianBlacklist(target: string | number, extraMeta?: string): 
   saveData();
 }
 
-// Load existing state if available at startup
-if (fs.existsSync(DATA_FILE)) {
-  try {
-    const raw = fs.readFileSync(DATA_FILE, 'utf-8');
-    const parsed = JSON.parse(raw);
-    appState = {
-      ...appState,
-      ...parsed,
-      credentials: {
-        ...appState.credentials,
-        ...(parsed.credentials || {}),
-      },
-      accounts: Array.isArray(parsed.accounts) ? parsed.accounts : (appState.accounts || []),
-      scheduler: {
-        ...appState.scheduler,
-        ...(parsed.scheduler || {}),
-      },
-      groupPromotionStrategy: parsed.groupPromotionStrategy ? {
-        ...defaultGroupPromotionStrategy,
-        ...parsed.groupPromotionStrategy,
-        strategy1: {
-          ...defaultGroupPromotionStrategy.strategy1,
-          ...(parsed.groupPromotionStrategy?.strategy1 || {}),
-        },
-        strategy2: {
-          ...defaultGroupPromotionStrategy.strategy2,
-          ...(parsed.groupPromotionStrategy?.strategy2 || {}),
-        },
-        contactedPvUsers: (parsed.groupPromotionStrategy?.contactedPvUsers && typeof parsed.groupPromotionStrategy.contactedPvUsers === 'object') ? parsed.groupPromotionStrategy.contactedPvUsers : {},
-        recentLeads: Array.isArray(parsed.groupPromotionStrategy?.recentLeads) ? parsed.groupPromotionStrategy.recentLeads : [],
-        inboundPvConversations: Array.isArray(parsed.groupPromotionStrategy?.inboundPvConversations) ? parsed.groupPromotionStrategy.inboundPvConversations : [],
-      } : defaultGroupPromotionStrategy,
-      groups: Array.isArray(parsed.groups) ? parsed.groups : (appState.groups || []),
-      campaigns: Array.isArray(parsed.campaigns) ? parsed.campaigns : (appState.campaigns || []),
-      logs: Array.isArray(parsed.logs) ? parsed.logs : (appState.logs || []),
-      monitoringReports: Array.isArray(parsed.monitoringReports) ? parsed.monitoringReports : [],
-      lastBroadcastReport: parsed.lastBroadcastReport || appState.lastBroadcastReport,
-      broadcastHistory: parsed.broadcastHistory || appState.broadcastHistory || [],
-      anonymousAutomator: normalizeAnonymousAutomatorConfig(parsed.anonymousAutomator),
-      anonymousSessionHistory: Array.isArray(parsed.anonymousSessionHistory) ? parsed.anonymousSessionHistory : [],
-      currentTestRun: parsed.currentTestRun || null,
-      previousTestRuns: Array.isArray(parsed.previousTestRuns) ? parsed.previousTestRuns : [],
-      purgedNonPersianBlacklist: Array.isArray(parsed.purgedNonPersianBlacklist) ? parsed.purgedNonPersianBlacklist : [],
-      dripJoinConfig: parsed.dripJoinConfig ? {
-        enabled: Boolean(parsed.dripJoinConfig.enabled),
-        maxJoinsPerAccountPerDay: parsed.dripJoinConfig.maxJoinsPerAccountPerDay || 8,
-        intervalMinutes: parsed.dripJoinConfig.intervalMinutes || 20,
-        jitterMinutes: parsed.dripJoinConfig.jitterMinutes || 5,
-        dailyJoinResetDate: parsed.dripJoinConfig.dailyJoinResetDate || new Date().toISOString().split('T')[0],
-        accountDailyJoins: parsed.dripJoinConfig.accountDailyJoins || {},
-        lastJoinTimePerAccount: parsed.dripJoinConfig.lastJoinTimePerAccount || {},
-      } : {
-        enabled: false,
-        maxJoinsPerAccountPerDay: 8,
-        intervalMinutes: 20,
-        jitterMinutes: 5,
-        dailyJoinResetDate: new Date().toISOString().split('T')[0],
-        accountDailyJoins: {},
-        lastJoinTimePerAccount: {},
-      },
-    };
+// Load existing state if available at startup (with automatic multi-file fallback)
+const candidateDataFiles = [DATA_FILE, BACKUP_DATA_FILE, SEED_DATA_FILE];
+let loadedFromFile: string | null = null;
 
-    // Ensure transient in-progress flags are cleanly reset on server startup
-    if (appState.activeGroupJoinProgress) {
-      appState.activeGroupJoinProgress.isRunning = false;
-      if (Array.isArray(appState.activeGroupJoinProgress.workers)) {
-        appState.activeGroupJoinProgress.workers.forEach(w => {
-          if (w.status === 'joining' || w.status === 'antibot' || w.status === 'preparing') {
-            w.status = 'completed';
-            w.lastAction = 'عملیات خاتمه یافته است.';
-          }
-        });
+for (const candidate of candidateDataFiles) {
+  if (fs.existsSync(candidate)) {
+    try {
+      const raw = fs.readFileSync(candidate, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        appState = {
+          ...appState,
+          ...parsed,
+          credentials: {
+            ...appState.credentials,
+            ...(parsed.credentials || {}),
+          },
+          accounts: Array.isArray(parsed.accounts) ? parsed.accounts : (appState.accounts || []),
+          scheduler: {
+            ...appState.scheduler,
+            ...(parsed.scheduler || {}),
+          },
+          groupPromotionStrategy: parsed.groupPromotionStrategy ? {
+            ...defaultGroupPromotionStrategy,
+            ...parsed.groupPromotionStrategy,
+            strategy1: {
+              ...defaultGroupPromotionStrategy.strategy1,
+              ...(parsed.groupPromotionStrategy?.strategy1 || {}),
+            },
+            strategy2: {
+              ...defaultGroupPromotionStrategy.strategy2,
+              ...(parsed.groupPromotionStrategy?.strategy2 || {}),
+            },
+            contactedPvUsers: (parsed.groupPromotionStrategy?.contactedPvUsers && typeof parsed.groupPromotionStrategy.contactedPvUsers === 'object') ? parsed.groupPromotionStrategy.contactedPvUsers : {},
+            recentLeads: Array.isArray(parsed.groupPromotionStrategy?.recentLeads) ? parsed.groupPromotionStrategy.recentLeads : [],
+            inboundPvConversations: Array.isArray(parsed.groupPromotionStrategy?.inboundPvConversations) ? parsed.groupPromotionStrategy.inboundPvConversations : [],
+          } : defaultGroupPromotionStrategy,
+          groups: Array.isArray(parsed.groups) ? parsed.groups : (appState.groups || []),
+          campaigns: Array.isArray(parsed.campaigns) ? parsed.campaigns : (appState.campaigns || []),
+          logs: Array.isArray(parsed.logs) ? parsed.logs : (appState.logs || []),
+          monitoringReports: Array.isArray(parsed.monitoringReports) ? parsed.monitoringReports : [],
+          lastBroadcastReport: parsed.lastBroadcastReport || appState.lastBroadcastReport,
+          broadcastHistory: parsed.broadcastHistory || appState.broadcastHistory || [],
+          anonymousAutomator: normalizeAnonymousAutomatorConfig(parsed.anonymousAutomator),
+          anonymousSessionHistory: Array.isArray(parsed.anonymousSessionHistory) ? parsed.anonymousSessionHistory : [],
+          currentTestRun: parsed.currentTestRun || null,
+          previousTestRuns: Array.isArray(parsed.previousTestRuns) ? parsed.previousTestRuns : [],
+          purgedNonPersianBlacklist: Array.isArray(parsed.purgedNonPersianBlacklist) ? parsed.purgedNonPersianBlacklist : [],
+          dripJoinConfig: parsed.dripJoinConfig ? {
+            enabled: Boolean(parsed.dripJoinConfig.enabled),
+            maxJoinsPerAccountPerDay: parsed.dripJoinConfig.maxJoinsPerAccountPerDay || 8,
+            intervalMinutes: parsed.dripJoinConfig.intervalMinutes || 20,
+            jitterMinutes: parsed.dripJoinConfig.jitterMinutes || 5,
+            dailyJoinResetDate: parsed.dripJoinConfig.dailyJoinResetDate || new Date().toISOString().split('T')[0],
+            accountDailyJoins: parsed.dripJoinConfig.accountDailyJoins || {},
+            lastJoinTimePerAccount: parsed.dripJoinConfig.lastJoinTimePerAccount || {},
+          } : {
+            enabled: false,
+            maxJoinsPerAccountPerDay: 8,
+            intervalMinutes: 20,
+            jitterMinutes: 5,
+            dailyJoinResetDate: new Date().toISOString().split('T')[0],
+            accountDailyJoins: {},
+            lastJoinTimePerAccount: {},
+          },
+        };
+        loadedFromFile = candidate;
+        break;
       }
+    } catch (err) {
+      console.warn(`Could not parse data file ${candidate}:`, err);
     }
-    if (appState.activeBroadcastProgress) {
-      appState.activeBroadcastProgress.isRunning = false;
-    }
+  }
+}
 
-    // Optimistic self-healing for groups on startup: unlock groups with transient errors
-    if (Array.isArray(appState.groups)) {
-      appState.groups.forEach(g => {
-        if (g.isActive && g.status !== 'purged_non_persian' && g.readinessStatus !== 'non_persian_purged') {
-          const err = String(g.errorMessage || '').toLowerCase();
-          if (g.readinessStatus === 'captcha_required' || (!err.includes('chat_write_forbidden') && g.canSendMessages === false)) {
-            g.canSendMessages = true;
-            g.readinessStatus = 'ready';
-            g.errorMessage = undefined;
-          }
+if (loadedFromFile) {
+  // Ensure transient in-progress flags are cleanly reset on server startup
+  if (appState.activeGroupJoinProgress) {
+    appState.activeGroupJoinProgress.isRunning = false;
+    if (Array.isArray(appState.activeGroupJoinProgress.workers)) {
+      appState.activeGroupJoinProgress.workers.forEach(w => {
+        if (w.status === 'joining' || w.status === 'antibot' || w.status === 'preparing') {
+          w.status = 'completed';
+          w.lastAction = 'عملیات خاتمه یافته است.';
         }
       });
     }
+  }
+  if (appState.activeBroadcastProgress) {
+    appState.activeBroadcastProgress.isRunning = false;
+  }
 
-    // Auto-repair and synchronize promotional banner images on startup
-    try {
-      const searchDirs = [UPLOADS_DIR, PUBLIC_UPLOADS_DIR];
-      let bestBannerUrl: string | undefined = undefined;
-      for (const dir of searchDirs) {
-        if (!fs.existsSync(dir)) continue;
-        const validFiles = fs.readdirSync(dir).filter(f =>
-          f.startsWith('banner_') && !f.endsWith('.png') && (f.endsWith('.jpg') || f.endsWith('.jpeg') || f.endsWith('.webp'))
-        );
-        if (validFiles.length > 0) {
-          const sorted = validFiles.sort((a, b) => {
-            const sA = fs.statSync(path.join(dir, a)).size;
-            const sB = fs.statSync(path.join(dir, b)).size;
-            return sB - sA;
-          });
-          if (sorted[0]) {
-            bestBannerUrl = `/uploads/${sorted[0]}`;
-            break;
-          }
+  // Optimistic self-healing for groups on startup: unlock groups with transient errors
+  if (Array.isArray(appState.groups)) {
+    appState.groups.forEach(g => {
+      if (g.isActive && g.status !== 'purged_non_persian' && g.readinessStatus !== 'non_persian_purged') {
+        const err = String(g.errorMessage || '').toLowerCase();
+        if (g.readinessStatus === 'captcha_required' || (!err.includes('chat_write_forbidden') && g.canSendMessages === false)) {
+          g.canSendMessages = true;
+          g.readinessStatus = 'ready';
+          g.errorMessage = undefined;
         }
       }
+    });
+  }
 
-      if (bestBannerUrl) {
-        let changed = false;
-        if (Array.isArray(appState.campaigns)) {
-          for (const camp of appState.campaigns) {
-            const curImg = camp.imageUrl;
-            if (!curImg || curImg.includes('/uploads/')) {
-              const fname = curImg ? path.basename(curImg.split('?')[0]) : '';
-              const exists = fname && (fs.existsSync(path.join(UPLOADS_DIR, fname)) || fs.existsSync(path.join(PUBLIC_UPLOADS_DIR, fname)));
-              if (!exists) {
-                camp.imageUrl = bestBannerUrl;
-                changed = true;
-                console.log(`[AutoRepair] Synced campaign ${camp.id} banner to valid file: ${bestBannerUrl}`);
-              }
+  // Auto-repair and synchronize promotional banner images on startup
+  try {
+    const searchDirs = [UPLOADS_DIR, PUBLIC_UPLOADS_DIR];
+    let bestBannerUrl: string | undefined = undefined;
+    for (const dir of searchDirs) {
+      if (!fs.existsSync(dir)) continue;
+      const validFiles = fs.readdirSync(dir).filter(f =>
+        f.startsWith('banner_') && !f.endsWith('.png') && (f.endsWith('.jpg') || f.endsWith('.jpeg') || f.endsWith('.webp'))
+      );
+      if (validFiles.length > 0) {
+        const sorted = validFiles.sort((a, b) => {
+          const sA = fs.statSync(path.join(dir, a)).size;
+          const sB = fs.statSync(path.join(dir, b)).size;
+          return sB - sA;
+        });
+        if (sorted[0]) {
+          bestBannerUrl = `/uploads/${sorted[0]}`;
+          break;
+        }
+      }
+    }
+
+    if (bestBannerUrl) {
+      let changed = false;
+      if (Array.isArray(appState.campaigns)) {
+        for (const camp of appState.campaigns) {
+          const curImg = camp.imageUrl;
+          if (!curImg || curImg.includes('/uploads/')) {
+            const fname = curImg ? path.basename(curImg.split('?')[0]) : '';
+            const exists = fname && (fs.existsSync(path.join(UPLOADS_DIR, fname)) || fs.existsSync(path.join(PUBLIC_UPLOADS_DIR, fname)));
+            if (!exists) {
+              camp.imageUrl = bestBannerUrl;
+              changed = true;
+              console.log(`[AutoRepair] Synced campaign ${camp.id} banner to valid file: ${bestBannerUrl}`);
             }
           }
         }
-        if (appState.anonymousAutomator?.instructions?.productPromotion) {
-          const cur = appState.anonymousAutomator.instructions.productPromotion.imageUrl;
+      }
+      if (appState.anonymousAutomator?.instructions?.productPromotion) {
+        const cur = appState.anonymousAutomator.instructions.productPromotion.imageUrl;
+        if (!cur || cur.includes('/uploads/')) {
+          const fname = cur ? path.basename(cur.split('?')[0]) : '';
+          const exists = fname && (fs.existsSync(path.join(UPLOADS_DIR, fname)) || fs.existsSync(path.join(PUBLIC_UPLOADS_DIR, fname)));
+          if (!exists) {
+            appState.anonymousAutomator.instructions.productPromotion.imageUrl = bestBannerUrl;
+            changed = true;
+          }
+        }
+      }
+      if (Array.isArray(appState.anonymousAutomator?.instructions?.products)) {
+        for (const prod of appState.anonymousAutomator.instructions.products) {
+          const cur = prod.bannerImageUrl;
           if (!cur || cur.includes('/uploads/')) {
             const fname = cur ? path.basename(cur.split('?')[0]) : '';
             const exists = fname && (fs.existsSync(path.join(UPLOADS_DIR, fname)) || fs.existsSync(path.join(PUBLIC_UPLOADS_DIR, fname)));
             if (!exists) {
-              appState.anonymousAutomator.instructions.productPromotion.imageUrl = bestBannerUrl;
+              prod.bannerImageUrl = bestBannerUrl;
               changed = true;
             }
           }
         }
-        if (Array.isArray(appState.anonymousAutomator?.instructions?.products)) {
-          for (const prod of appState.anonymousAutomator.instructions.products) {
-            const cur = prod.bannerImageUrl;
-            if (!cur || cur.includes('/uploads/')) {
-              const fname = cur ? path.basename(cur.split('?')[0]) : '';
-              const exists = fname && (fs.existsSync(path.join(UPLOADS_DIR, fname)) || fs.existsSync(path.join(PUBLIC_UPLOADS_DIR, fname)));
-              if (!exists) {
-                prod.bannerImageUrl = bestBannerUrl;
-                changed = true;
-              }
-            }
-          }
-        }
-        if (changed) {
-          saveData();
-        }
       }
-    } catch (bannerRepairErr) {
-      console.error('Non-blocking banner repair error:', bannerRepairErr);
+      if (changed) {
+        saveData();
+      }
     }
-
-    saveData();
-    if (!appState.credentials.apiId || appState.credentials.apiId === '22239448') {
-      appState.credentials.apiId = DEFAULT_API_ID;
-      appState.credentials.apiHash = DEFAULT_API_HASH;
-    }
-    console.log('✅ Loaded saved app state from telegram_promoter_data.json. Telegram Connected:', appState.credentials.isConnected);
-  } catch (e) {
-    console.error('Failed to load data file:', e);
+  } catch (bannerRepairErr) {
+    console.error('Non-blocking banner repair error:', bannerRepairErr);
   }
+
+  saveData();
+  console.log(`✅ Loaded saved app state from ${loadedFromFile}. Telegram Connected:`, appState.credentials.isConnected);
 } else {
   // Save baseline state immediately on initial startup
   saveData();
-  console.log('✅ Created initial telegram_promoter_data.json storage file.');
+  console.log('✅ Created initial telegram_promoter_data.json and backup storage files.');
 }
 
 // Global Execution Mutex & Rotational Account State
@@ -3295,7 +3341,19 @@ app.post('/api/credentials/logout', (req, res) => {
 
 // 6. Add Target Group (Single)
 app.post('/api/groups/add', (req, res) => {
-  const { title, usernameOrLink, category } = req.body;
+  const {
+    title,
+    usernameOrLink,
+    category,
+    assignedAccountId,
+    isReady,
+    status: explicitStatus,
+    membershipStatus: explicitMembershipStatus,
+    readinessStatus: explicitReadinessStatus,
+    canSendMessages: explicitCanSendMessages,
+    memberCount: explicitMemberCount,
+    telegramChatId: explicitChatId,
+  } = req.body;
   if (!usernameOrLink) {
     res.status(400).json({ error: 'نام کاربری یا لینک گروه الزامی است' });
     return;
@@ -3356,27 +3414,48 @@ app.post('/api/groups/add', (req, res) => {
     return accounts[0];
   }
 
-  const assignedAcc = getLeastLoadedActiveAccount();
+  const explicitAcc = assignedAccountId
+    ? (appState.accounts || []).find(a => a.id === assignedAccountId || a.phoneNumber === assignedAccountId || a.userProfile?.firstName === assignedAccountId)
+    : null;
+  const assignedAcc = explicitAcc || getLeastLoadedActiveAccount();
+
+  const isFullyReady = isReady === true || explicitReadinessStatus === 'ready';
 
   const newGroup: TargetGroup = {
     id: 'group_' + Date.now(),
     title: title || formatted,
     usernameOrLink: formatted,
+    telegramChatId: explicitChatId ? String(explicitChatId) : undefined,
     isActive: true,
-    memberCount: Math.floor(Math.random() * 15000) + 1500,
-    status: 'not_joined',
-    membershipStatus: 'not_joined',
-    joinedAccountIds: [],
-    joinedAccountPhones: [],
+    memberCount: explicitMemberCount || Math.floor(Math.random() * 15000) + 1500,
+    status: isFullyReady ? 'joined' : (explicitStatus || 'not_joined'),
+    membershipStatus: isFullyReady ? 'joined' : (explicitMembershipStatus || 'not_joined'),
+    readinessStatus: isFullyReady ? 'ready' : (explicitReadinessStatus || 'unjoined'),
+    canSendMessages: isFullyReady ? true : Boolean(explicitCanSendMessages),
+    isPersianVerified: true,
+    languageDetected: 'fa',
+    joinedAccountIds: isFullyReady && assignedAcc?.id ? [assignedAcc.id] : [],
+    joinedAccountPhones: isFullyReady && assignedAcc?.phoneNumber ? [assignedAcc.phoneNumber] : [],
     assignedAccountId: assignedAcc?.id,
     assignedAccountPhone: assignedAcc?.phoneNumber,
-    assignedAccountName: assignedAcc?.userProfile?.firstName,
+    assignedAccountName: assignedAcc?.userProfile?.firstName || assignedAcc?.accountName,
     category: category || 'عمومی',
+    accountMemberships: assignedAcc?.id ? {
+      [assignedAcc.id]: {
+        accountId: assignedAcc.id,
+        accountPhone: assignedAcc.phoneNumber,
+        accountName: assignedAcc.userProfile?.firstName || assignedAcc.accountName,
+        isMember: isFullyReady,
+        status: isFullyReady ? 'joined' : 'not_joined',
+        checkedAt: new Date().toISOString(),
+        joinedAt: isFullyReady ? new Date().toISOString() : undefined,
+      }
+    } : undefined,
   };
 
   appState.groups.push(newGroup);
   saveData();
-  addLog('info', `گروه هدف "${newGroup.title}" (${newGroup.usernameOrLink}) به لیست گروه‌ها اضافه شد و به اکانت (${newGroup.assignedAccountPhone || 'حساب اصلی'}) اختصاص یافت.`, newGroup.title);
+  addLog('info', `گروه هدف "${newGroup.title}" (${newGroup.usernameOrLink}) به لیست گروه‌ها اضافه شد و به اکانت (${newGroup.assignedAccountName || newGroup.assignedAccountPhone || 'حساب اصلی'}) اختصاص یافت.`, newGroup.title);
   res.json({ success: true, group: newGroup, groups: appState.groups });
 });
 
@@ -9059,14 +9138,17 @@ app.post('/api/groups/drip-join/settings', (req, res) => {
     };
   }
 
-  if (typeof maxJoinsPerAccountPerDay === 'number' && maxJoinsPerAccountPerDay > 0) {
-    appState.dripJoinConfig.maxJoinsPerAccountPerDay = Math.min(20, Math.max(1, maxJoinsPerAccountPerDay));
+  const parsedMax = parseInt(String(maxJoinsPerAccountPerDay), 10);
+  if (!isNaN(parsedMax) && parsedMax > 0) {
+    appState.dripJoinConfig.maxJoinsPerAccountPerDay = Math.min(100, Math.max(1, parsedMax));
   }
-  if (typeof intervalMinutes === 'number' && intervalMinutes > 0) {
-    appState.dripJoinConfig.intervalMinutes = Math.max(3, intervalMinutes);
+  const parsedInterval = parseInt(String(intervalMinutes), 10);
+  if (!isNaN(parsedInterval) && parsedInterval > 0) {
+    appState.dripJoinConfig.intervalMinutes = Math.min(720, Math.max(1, parsedInterval));
   }
-  if (typeof jitterMinutes === 'number' && jitterMinutes >= 0) {
-    appState.dripJoinConfig.jitterMinutes = jitterMinutes;
+  const parsedJitter = parseInt(String(jitterMinutes), 10);
+  if (!isNaN(parsedJitter) && parsedJitter >= 0) {
+    appState.dripJoinConfig.jitterMinutes = parsedJitter;
   }
 
   saveData();
@@ -17073,6 +17155,36 @@ interface SentBotGroupMsgRecord {
 }
 const recentBotSentGroupMessageMap = new Map<string, SentBotGroupMsgRecord>();
 
+function recordSentGroupMessage(group: any, msgId: any, text: string, accountId: string) {
+  if (!msgId) return;
+  const record: SentBotGroupMsgRecord = { accountId, text, timestamp: Date.now() };
+  if (group) {
+    if (group.id) recentBotSentGroupMessageMap.set(`${group.id}_${msgId}`, record);
+    if (group.title) recentBotSentGroupMessageMap.set(`${group.title}_${msgId}`, record);
+    if (group.telegramChatId) recentBotSentGroupMessageMap.set(`${group.telegramChatId}_${msgId}`, record);
+  }
+  recentBotSentGroupMessageMap.set(`msg_${msgId}`, record);
+}
+
+function findSentGroupMessage(group: any, msgId: any): SentBotGroupMsgRecord | undefined {
+  if (!msgId) return undefined;
+  if (group) {
+    if (group.id && recentBotSentGroupMessageMap.has(`${group.id}_${msgId}`)) {
+      return recentBotSentGroupMessageMap.get(`${group.id}_${msgId}`);
+    }
+    if (group.title && recentBotSentGroupMessageMap.has(`${group.title}_${msgId}`)) {
+      return recentBotSentGroupMessageMap.get(`${group.title}_${msgId}`);
+    }
+    if (group.telegramChatId && recentBotSentGroupMessageMap.has(`${group.telegramChatId}_${msgId}`)) {
+      return recentBotSentGroupMessageMap.get(`${group.telegramChatId}_${msgId}`);
+    }
+  }
+  if (recentBotSentGroupMessageMap.has(`msg_${msgId}`)) {
+    return recentBotSentGroupMessageMap.get(`msg_${msgId}`);
+  }
+  return undefined;
+}
+
 // Interactive conversation threads per user in each group (key: `${chatId}_${senderId}`)
 interface GroupConversationTurn {
   role: 'user' | 'bot';
@@ -17080,6 +17192,461 @@ interface GroupConversationTurn {
   timestamp: number;
 }
 const groupConversationThreads = new Map<string, GroupConversationTurn[]>();
+
+// Group banner rate-limiting & anti-spam frequency controller
+const groupBannerLastSentMap = new Map<string, number>();
+
+function shouldSendBannerInGroup(
+  groupId: string,
+  userMessageText: string,
+  intent?: string,
+  config?: any,
+  isFollowUpTurnWithSameUser?: boolean
+): boolean {
+  if (!config?.strategy2?.sendBannerInGroupReply) return false;
+
+  // In rapid consecutive turns with the exact same user, keep follow-ups pure text for natural human conversation
+  if (isFollowUpTurnWithSameUser) {
+    return false;
+  }
+
+  const triggerStrategy = config?.strategy2?.bannerTriggerStrategy || 'all_qualified_leads';
+
+  // Strategy A: 'all_qualified_leads' (Default - Maximum Banner Impact & Lead Conversion)
+  if (triggerStrategy === 'all_qualified_leads') {
+    const cooldownMin = typeof config?.strategy2?.bannerCooldownMinutes === 'number'
+      ? config.strategy2.bannerCooldownMinutes
+      : 3;
+    if (cooldownMin > 0) {
+      const cooldownMs = cooldownMin * 60 * 1000;
+      const lastSent = groupBannerLastSentMap.get(groupId) || 0;
+      if (Date.now() - lastSent < cooldownMs) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // Strategy B: 'high_intent_and_pricing' (Explicit inquiries, buying, testing, ping, etc.)
+  if (triggerStrategy === 'high_intent_and_pricing') {
+    const rawLower = (userMessageText || '').toLowerCase();
+    const isHighIntent =
+      rawLower.includes('قیمت') ||
+      rawLower.includes('تعرفه') ||
+      rawLower.includes('خرید') ||
+      rawLower.includes('چنده') ||
+      rawLower.includes('پلن') ||
+      rawLower.includes('تست') ||
+      rawLower.includes('اکانت') ||
+      rawLower.includes('سرور') ||
+      rawLower.includes('پینگ') ||
+      rawLower.includes('v2ray') ||
+      rawLower.includes('کانفیگ') ||
+      rawLower.includes('فیلترشکن') ||
+      intent === 'PLAN_REQUEST' ||
+      intent === 'PRICE_REQUEST' ||
+      intent === 'BUY_INTENT' ||
+      intent === 'MULTI_LEAD_BATCH';
+
+    if (!isHighIntent) return false;
+
+    const cooldownMin = typeof config?.strategy2?.bannerCooldownMinutes === 'number'
+      ? config.strategy2.bannerCooldownMinutes
+      : 3;
+    if (cooldownMin > 0) {
+      const cooldownMs = cooldownMin * 60 * 1000;
+      const lastSent = groupBannerLastSentMap.get(groupId) || 0;
+      if (Date.now() - lastSent < cooldownMs) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // Strategy C: 'batch_and_first_touch' (Batch mentions or first encounters)
+  if (triggerStrategy === 'batch_and_first_touch') {
+    if (intent === 'MULTI_LEAD_BATCH') return true;
+    const cooldownMin = typeof config?.strategy2?.bannerCooldownMinutes === 'number'
+      ? config.strategy2.bannerCooldownMinutes
+      : 5;
+    const cooldownMs = cooldownMin * 60 * 1000;
+    const lastSent = groupBannerLastSentMap.get(groupId) || 0;
+    return Date.now() - lastSent >= cooldownMs;
+  }
+
+  return true;
+}
+
+interface SendGroupReplyResult {
+  sentMsg: any;
+  bannerSent: boolean;
+  isRichMedia: boolean;
+}
+
+async function sendGroupReplyWithBanner(params: {
+  client: any;
+  peer: any;
+  replyToMsgId: number;
+  replyText: string;
+  matchedGroup: any;
+  activeCampaign: any;
+  config: any;
+  userMessageText?: string;
+  intent?: string;
+  isFollowUpTurn?: boolean;
+}): Promise<SendGroupReplyResult> {
+  const {
+    client,
+    peer,
+    replyToMsgId,
+    replyText,
+    matchedGroup,
+    activeCampaign,
+    config,
+    userMessageText = '',
+    intent,
+    isFollowUpTurn,
+  } = params;
+
+  const groupKey = matchedGroup.id || matchedGroup.title;
+  const shouldSendBanner = shouldSendBannerInGroup(
+    groupKey,
+    userMessageText,
+    intent,
+    config,
+    isFollowUpTurn
+  );
+
+  const deliveryMode = config?.strategy2?.bannerDeliveryMode || 'rich_photo_caption';
+  const supportHandle = (config?.strategy2?.supportContactHandle || activeCampaign?.contactHandle || '@Nova_vpn10');
+  const cleanSupport = (supportHandle && supportHandle !== 'در عکس بالا') ? supportHandle : '@Nova_vpn10';
+
+  let bannerPath: string | null = null;
+  if (shouldSendBanner && activeCampaign?.imageUrl) {
+    try {
+      bannerPath = await getImageFilePathForTelegram(activeCampaign.imageUrl);
+      if (!bannerPath || !fs.existsSync(bannerPath)) {
+        bannerPath = null;
+      }
+    } catch (e) {
+      bannerPath = null;
+    }
+  }
+
+  // MODE 1: Rich Photo + Caption (Single Telegram Message)
+  // Sends photo with AI reply & mentions directly in caption! Maximum visual impact, 0 double-message spam!
+  if (shouldSendBanner && bannerPath && deliveryMode === 'rich_photo_caption') {
+    let finalCaption = replyText;
+    if (!finalCaption.includes(cleanSupport) && finalCaption.length + cleanSupport.length + 30 <= 1000) {
+      finalCaption += `\n👤 ارتباط و تست رایگان: ${cleanSupport}`;
+    }
+    if (finalCaption.length > 1020) {
+      finalCaption = finalCaption.slice(0, 1017) + '...';
+    }
+
+    try {
+      const photoMsg = await client.sendFile(peer, {
+        file: bannerPath,
+        caption: finalCaption,
+        replyTo: replyToMsgId,
+      });
+      groupBannerLastSentMap.set(groupKey, Date.now());
+      addLog('info', `[بنر و ریپلای غنی] بنر تصویری به همراه متن پاسخ در قالب ۱ پیام غنی و جذاب در گروه "${matchedGroup.title}" ارسال گردید.`);
+      return { sentMsg: photoMsg, bannerSent: true, isRichMedia: true };
+    } catch (photoErr: any) {
+      const errStr = String(photoErr?.message || photoErr?.errorMessage || photoErr || '').toLowerCase();
+      const waitMatch = errStr.match(/wait of (\d+) seconds/i) || errStr.match(/slowmode_wait_(\d+)/i);
+      if (waitMatch && parseInt(waitMatch[1], 10) <= 12) {
+        const waitSec = parseInt(waitMatch[1], 10);
+        await new Promise(r => setTimeout(r, (waitSec + 1) * 1000));
+        try {
+          const photoMsg = await client.sendFile(peer, {
+            file: bannerPath,
+            caption: finalCaption,
+            replyTo: replyToMsgId,
+          });
+          groupBannerLastSentMap.set(groupKey, Date.now());
+          addLog('info', `[بنر و ریپلای غنی] بنر تصویری با موفقیت در گروه "${matchedGroup.title}" ارسال شد.`);
+          return { sentMsg: photoMsg, bannerSent: true, isRichMedia: true };
+        } catch (retryPhotoErr) {}
+      }
+      addLog('info', `[ارسال بنر] گروه "${matchedGroup.title}" ارسال تصویر را محدود کرده است؛ پاسخ به صورت متنی ارسال می‌گردد.`);
+    }
+  }
+
+  // Fallback or Standard: Send text message
+  let sentMsg: any = null;
+  try {
+    sentMsg = await client.sendMessage(peer, {
+      message: replyText,
+      replyTo: replyToMsgId,
+    });
+  } catch (sendErr: any) {
+    const errStr = String(sendErr?.message || sendErr?.errorMessage || sendErr || '').toLowerCase();
+    const waitMatch = errStr.match(/wait of (\d+) seconds/i) || errStr.match(/slowmode_wait_(\d+)/i);
+    if (waitMatch && parseInt(waitMatch[1], 10) <= 12) {
+      const waitSec = parseInt(waitMatch[1], 10);
+      await new Promise(r => setTimeout(r, (waitSec + 1) * 1000));
+      try {
+        sentMsg = await client.sendMessage(peer, {
+          message: replyText,
+          replyTo: replyToMsgId,
+        });
+      } catch (e) {}
+    } else {
+      throw sendErr;
+    }
+  }
+
+  // MODE 2: Sequential Mode (Send text first, then photo as follow-up)
+  if (shouldSendBanner && bannerPath && sentMsg && deliveryMode === 'sequential_text_then_banner') {
+    try {
+      await new Promise(r => setTimeout(r, 1500));
+      const bannerCaption = `📌 لیست تعرفه‌ها و مشخصات سرورها\n👤 ارتباط با پشتیبانی و دریافت تست رایگان: ${cleanSupport}`;
+      await client.sendFile(peer, {
+        file: bannerPath,
+        caption: bannerCaption,
+        replyTo: sentMsg.id || replyToMsgId,
+      });
+      groupBannerLastSentMap.set(groupKey, Date.now());
+      addLog('info', `[بنر تبلیغاتی] بنر تعرفه و مشخصات در گروه "${matchedGroup.title}" ارسال گردید.`);
+      return { sentMsg, bannerSent: true, isRichMedia: false };
+    } catch (bErr: any) {
+      const bErrStr = String(bErr?.message || bErr || '');
+      addLog('info', `[بنر متوالی] عدم امکان ارسال بنر دوم در گروه "${matchedGroup.title}": ${bErrStr.slice(0, 80)}`);
+    }
+  }
+
+  return { sentMsg, bannerSent: false, isRichMedia: false };
+}
+
+// Multi-Lead Batch Aggregator for crowded groups
+interface BufferedGroupLead {
+  senderId: string;
+  senderFirstName: string;
+  senderUsername: string; // Must have telegram username for mention
+  userMessageText: string;
+  userMessageId: number;
+  category: string;
+  matchedKeywords: string[];
+  timestamp: number;
+  msg: any;
+  client: any;
+  currentAcc: any;
+  matchedGroup: any;
+}
+
+interface GroupLeadBufferState {
+  leads: BufferedGroupLead[];
+  timer: NodeJS.Timeout | null;
+  isProcessing: boolean;
+}
+
+const groupLeadBufferMap = new Map<string, GroupLeadBufferState>();
+
+async function flushGroupLeadBuffer(groupKey: string) {
+  const buf = groupLeadBufferMap.get(groupKey);
+  if (!buf || buf.leads.length === 0 || buf.isProcessing) return;
+
+  if (buf.timer) {
+    clearTimeout(buf.timer);
+    buf.timer = null;
+  }
+
+  buf.isProcessing = true;
+  // Take up to 10 leads as requested by user ("نهایتا تا 10 کاربر اگر ایدی داشتن")
+  const leadsToProcess = buf.leads.splice(0, 10);
+
+  try {
+    const config = ensureGroupPromotionStrategyConfig();
+    const firstLead = leadsToProcess[0];
+    const lastLead = leadsToProcess[leadsToProcess.length - 1];
+    const client = lastLead.client || firstLead.client;
+    const matchedGroup = lastLead.matchedGroup || firstLead.matchedGroup;
+    const currentAcc = lastLead.currentAcc || firstLead.currentAcc;
+    const activeCampaign = appState.campaigns.find(c => c.isActive) || appState.campaigns[0];
+
+    if (!client || !matchedGroup || !currentAcc || !activeCampaign) {
+      buf.isProcessing = false;
+      return;
+    }
+
+    const now = Date.now();
+    const hourKey = `${matchedGroup.id || matchedGroup.title}_${new Date().getHours()}`;
+    const currentHourly = groupHourlyReplies.get(hourKey) || { count: 0, hourTs: now };
+    const maxPerHour = config.strategy2.maxRepliesPerGroupPerHour || 15;
+    if (currentHourly.count >= maxPerHour) {
+      buf.isProcessing = false;
+      return;
+    }
+
+    const peer = await resolveAndJoinGroup(client, matchedGroup.usernameOrLink);
+    if (!peer) {
+      buf.isProcessing = false;
+      return;
+    }
+
+    const supportHandle = (config.strategy2.supportContactHandle || activeCampaign.contactHandle || '@Nova_vpn10');
+    const cleanSupport = (supportHandle && supportHandle !== 'در عکس بالا') ? supportHandle : '@Nova_vpn10';
+
+    let replyText = '';
+    let replyToMsgId = lastLead.userMessageId;
+    let mentionedList: string[] = [];
+
+    if (leadsToProcess.length === 1) {
+      // Solitary lead
+      const singleLead = leadsToProcess[0];
+      const convTurn = await processGroupLeadConversationTurn({
+        userMessageText: singleLead.userMessageText,
+        userMessageId: singleLead.userMessageId,
+        groupId: matchedGroup.id || String(matchedGroup.telegramChatId || matchedGroup.title),
+        groupTitle: matchedGroup.title,
+        senderId: singleLead.senderId,
+        senderFirstName: singleLead.senderFirstName,
+        senderUsername: singleLead.senderUsername,
+        campaign: activeCampaign,
+        isInitialLeadMatch: true,
+        leadCategory: singleLead.category as any,
+        matchedKeywords: singleLead.matchedKeywords,
+        anonymousInstructions: appState.anonymousAutomator?.instructions,
+        strategy: (config.strategy2 as any).anonymousEngineStrategy || 'direct_pitch',
+      });
+      replyText = convTurn.replyText;
+      replyToMsgId = singleLead.userMessageId;
+      if (singleLead.senderUsername) {
+        const cleanU = singleLead.senderUsername.replace(/^@+/, '');
+        if (!replyText.includes(`@${cleanU}`)) {
+          replyText = `@${cleanU} ${replyText}`;
+        }
+        mentionedList = [`@${cleanU}`];
+      }
+    } else {
+      // Consolidated Multi-Lead Batch Turn
+      const batchResult = await processGroupMultiLeadBatchTurn({
+        leads: leadsToProcess.map(l => ({
+          senderId: l.senderId,
+          senderFirstName: l.senderFirstName,
+          senderUsername: l.senderUsername,
+          userMessageText: l.userMessageText,
+          userMessageId: l.userMessageId,
+          category: l.category,
+        })),
+        groupId: matchedGroup.id || String(matchedGroup.telegramChatId || matchedGroup.title),
+        groupTitle: matchedGroup.title,
+        campaign: activeCampaign,
+        supportHandle: cleanSupport,
+        anonymousInstructions: appState.anonymousAutomator?.instructions,
+      });
+      replyText = batchResult.replyText;
+      mentionedList = batchResult.mentionedUsernames;
+      replyToMsgId = batchResult.replyToMessageId;
+    }
+
+    if (!replyText) {
+      buf.isProcessing = false;
+      return;
+    }
+
+    // Natural human typing simulation (2 seconds)
+    try {
+      const { Api } = await import('telegram');
+      await client.invoke(new Api.messages.SetTyping({
+        peer,
+        action: new Api.SendMessageTypingAction(),
+      })).catch(() => {});
+    } catch (e) {}
+
+    await new Promise(r => setTimeout(r, 2000));
+
+    const combinedLeadText = leadsToProcess.map(l => l.userMessageText).join(' ');
+    const sendRes = await sendGroupReplyWithBanner({
+      client,
+      peer,
+      replyToMsgId,
+      replyText,
+      matchedGroup,
+      activeCampaign,
+      config,
+      userMessageText: combinedLeadText,
+      intent: leadsToProcess.length > 1 ? 'MULTI_LEAD_BATCH' : undefined,
+    });
+    const sentMsg = sendRes.sentMsg;
+
+    if (sentMsg) {
+      matchedGroup.canSendMessages = true;
+      matchedGroup.readinessStatus = 'ready';
+      matchedGroup.errorMessage = undefined;
+
+      if (sentMsg.id) {
+        recordSentGroupMessage(matchedGroup, sentMsg.id, replyText, currentAcc.id);
+      }
+
+      config.strategy2.totalGroupRepliesSent = (config.strategy2.totalGroupRepliesSent || 0) + 1;
+      groupHourlyReplies.set(hourKey, { count: currentHourly.count + 1, hourTs: now });
+      groupCooldownMap.set(matchedGroup.id || matchedGroup.title, now);
+      currentAcc.dailySentCount = (currentAcc.dailySentCount || 0) + 1;
+
+      for (const lead of leadsToProcess) {
+        const userInGroupKey = `${matchedGroup.id || matchedGroup.title}_${lead.senderId}`;
+        groupUserReplyMap.set(userInGroupKey, now);
+
+        const convKey = `${matchedGroup.id || matchedGroup.title}_${lead.senderId}`;
+        groupConversationThreads.set(convKey, [
+          { role: 'user', text: lead.userMessageText, timestamp: lead.timestamp },
+          { role: 'bot', text: replyText, timestamp: now },
+        ]);
+
+        const realTimeLeadEvent: GroupLeadEvent = {
+          id: `lead_rt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          timestamp: new Date(now).toISOString(),
+          groupId: matchedGroup.id || String(matchedGroup.telegramChatId || matchedGroup.title),
+          groupTitle: matchedGroup.title,
+          originalMessageId: lead.userMessageId,
+          userId: lead.senderId,
+          userFirstName: lead.senderFirstName,
+          userUsername: lead.senderUsername,
+          originalMessageText: lead.userMessageText,
+          detectedCategory: lead.category as any,
+          detectedKeywords: lead.matchedKeywords,
+          groupReplySent: true,
+          groupReplyText: replyText,
+          pvSent: false,
+          status: 'replied_group',
+        };
+        config.recentLeads = config.recentLeads || [];
+        config.recentLeads.unshift(realTimeLeadEvent);
+      }
+
+      if (config.recentLeads.length > 150) {
+        config.recentLeads = config.recentLeads.slice(0, 150);
+      }
+      saveData();
+
+      const bannerNotice = sendRes.bannerSent ? (sendRes.isRichMedia ? ' 🖼️ [همراه با بنر تصویری غنی]' : ' 🖼️ [همراه با بنر تصویری]') : '';
+      if (leadsToProcess.length > 1) {
+        addLog(
+          'success',
+          `🎯 [پاسخ تجمیعی هوشمند به ${leadsToProcess.length} کاربر هدف${bannerNotice}] با منشن همزمان (${mentionedList.join(' ')}) در گروه "${matchedGroup.title}": "${replyText}"`
+        );
+      } else {
+        addLog(
+          'success',
+          `⚡ [شنود لحظه‌ای - ریپلای هوشمند${bannerNotice}] به کاربر «${firstLead.senderFirstName}» (@${firstLead.senderUsername}) در گروه "${matchedGroup.title}": "${replyText}"`
+        );
+      }
+    }
+  } catch (err: any) {
+    console.error('Error flushing group lead buffer:', err?.message || err);
+  } finally {
+    buf.isProcessing = false;
+    if (buf.leads.length > 0 && !buf.timer) {
+      const waitSec = Math.max(10, ensureGroupPromotionStrategyConfig()?.strategy2?.batchLeadWaitSeconds || 25);
+      buf.timer = setTimeout(() => {
+        flushGroupLeadBuffer(groupKey);
+      }, waitSec * 1000);
+    }
+  }
+}
 
 function ensureContactedPvUsersMap(): Record<string, { timestamp: string; userId?: string; username?: string; firstName?: string; reason?: string }> {
   const config = ensureGroupPromotionStrategyConfig();
@@ -17627,40 +18194,51 @@ async function handleRealtimeIncomingGroupMessage(client: any, event: any, msg: 
       }
     }
 
+    const activeCampaign = appState.campaigns.find(c => c.isActive) || appState.campaigns[0];
+
     // Detect if this message is an active reply to our bot or mentions our bot
-    const replyMsgId = msg.replyToMsgId || msg.replyTo?.replyToMsgId;
+    const replyMsgId = msg.replyToMsgId || msg.replyTo?.replyToMsgId || msg.replyToHeader?.replyToMsgId || msg.replyTo?.replyToTopId;
     let isReplyToOurBot = false;
     let repliedBotMsgText = '';
 
     if (replyMsgId) {
-      const sentKey = `${matchedGroup.id || matchedGroup.title}_${replyMsgId}`;
-      const sentRecord = recentBotSentGroupMessageMap.get(sentKey);
+      const sentRecord = findSentGroupMessage(matchedGroup, replyMsgId);
       if (sentRecord) {
         isReplyToOurBot = true;
         repliedBotMsgText = sentRecord.text;
       } else {
         try {
-          const origMsg = msg.getReplyMessage ? await msg.getReplyMessage().catch(() => null) : null;
+          let origMsg = msg.getReplyMessage ? await msg.getReplyMessage().catch(() => null) : null;
+          if (!origMsg && replyMsgId && client.getMessages) {
+            const peerForOrig = event.chat || msg.peerId || msg.chat;
+            if (peerForOrig) {
+              const fetched = await client.getMessages(peerForOrig, { ids: [replyMsgId] }).catch(() => []);
+              if (fetched && fetched[0]) origMsg = fetched[0];
+            }
+          }
           if (origMsg) {
             const origSenderId = String(origMsg.senderId || origMsg.fromId?.userId || '');
-            const isFromOurAccount = (appState.accounts || []).some(a => {
-              const aId = String(a.id || '');
-              const aUserId = String(a.userProfile?.id || '');
-              const aUsername = String(a.userProfile?.username || '').replace(/^@+/, '').toLowerCase();
-              const origUser = String(origMsg.sender?.username || '').replace(/^@+/, '').toLowerCase();
-              return (
-                (origSenderId && (origSenderId === aId || origSenderId === aUserId)) ||
-                (aUsername && origUser && aUsername === origUser)
-              );
-            });
-            if (isFromOurAccount) {
+            const isFromOurAccount = Boolean(
+              origMsg.out ||
+              (appState.accounts || []).some(a => {
+                const aId = String(a.id || '');
+                const aUserId = String(a.userProfile?.id || '');
+                const aUsername = String(a.userProfile?.username || '').replace(/^@+/, '').toLowerCase();
+                const origUser = String(origMsg.sender?.username || '').replace(/^@+/, '').toLowerCase();
+                return (
+                  (origSenderId && (origSenderId === aId || origSenderId === aUserId)) ||
+                  (aUsername && origUser && aUsername === origUser)
+                );
+              })
+            );
+            const origMsgText = String(origMsg.message || '');
+            const activeContact = String(config.strategy2.supportContactHandle || activeCampaign?.contactHandle || '@Nova_vpn10').replace(/^@+/, '').toLowerCase();
+            const textMentionsOurService = origMsgText.toLowerCase().includes(activeContact) || origMsgText.includes('نوا وی پی ان') || origMsgText.includes('نوا وی‌پی‌ان');
+
+            if (isFromOurAccount || textMentionsOurService) {
               isReplyToOurBot = true;
-              repliedBotMsgText = origMsg.message || '';
-              recentBotSentGroupMessageMap.set(sentKey, {
-                accountId: currentAcc.id,
-                text: repliedBotMsgText,
-                timestamp: Date.now(),
-              });
+              repliedBotMsgText = origMsgText;
+              recordSentGroupMessage(matchedGroup, replyMsgId, repliedBotMsgText, currentAcc.id);
             }
           }
         } catch (e) {}
@@ -17714,8 +18292,6 @@ async function handleRealtimeIncomingGroupMessage(client: any, event: any, msg: 
     }
 
     if (sender && sender.bot) return; // ignore other bots
-
-    const activeCampaign = appState.campaigns.find(c => c.isActive) || appState.campaigns[0];
     if (!activeCampaign) return;
 
     const myUsername = (currentAcc.userProfile?.username || '').replace(/^@+/, '').toLowerCase();
@@ -17723,16 +18299,31 @@ async function handleRealtimeIncomingGroupMessage(client: any, event: any, msg: 
 
     const convKey = `${matchedGroup.id || matchedGroup.title}_${senderId}`;
     let thread = groupConversationThreads.get(convKey) || [];
+    const existingConvEntry = getGroupConversationEntry(
+      matchedGroup.id || String(matchedGroup.telegramChatId || matchedGroup.title),
+      senderId
+    );
+    if (!repliedBotMsgText && existingConvEntry?.lastBotReplyText) {
+      repliedBotMsgText = existingConvEntry.lastBotReplyText;
+    }
+    if (thread.length === 0 && existingConvEntry?.history && existingConvEntry.history.length > 0) {
+      thread = existingConvEntry.history.map(h => ({
+        role: h.sender === 'stranger' ? 'user' : 'bot',
+        text: h.text,
+        timestamp: h.timestamp ? new Date(h.timestamp).getTime() : now,
+      }));
+      groupConversationThreads.set(convKey, thread);
+    }
     const hasActiveThread = Boolean(
-      thread.length > 0 &&
-      (now - (thread[thread.length - 1]?.timestamp || 0) < 15 * 60 * 1000)
+      (thread.length > 0 || (existingConvEntry && existingConvEntry.history.length > 0)) &&
+      (now - Math.max(thread[thread.length - 1]?.timestamp || 0, existingConvEntry?.lastActiveAt || 0) < 30 * 60 * 1000)
     );
 
     const isInteractiveReply = (isReplyToOurBot || mentionsMe || hasActiveThread) && config.strategy2.replyToUserRepliesInGroup !== false;
 
     // A. INTERACTIVE CONVERSATIONAL REPLY (USER CHATTING WITH OUR BOT IN GROUP)
     if (isInteractiveReply) {
-      const maxRounds = config.strategy2.maxConsecutiveRepliesPerUser || 5;
+      const maxRounds = Math.max(config.strategy2.maxConsecutiveRepliesPerUser || 12, 12);
       const botRepliesCount = thread.filter(t => t.role === 'bot').length;
       if (botRepliesCount >= maxRounds) {
         return; // Max conversation turns reached for this user in this group
@@ -17785,12 +18376,7 @@ async function handleRealtimeIncomingGroupMessage(client: any, event: any, msg: 
         });
 
         if (sentMsg && sentMsg.id) {
-          const mySentKey = `${matchedGroup.id || matchedGroup.title}_${sentMsg.id}`;
-          recentBotSentGroupMessageMap.set(mySentKey, {
-            accountId: currentAcc.id,
-            text: convTurn.replyText,
-            timestamp: Date.now(),
-          });
+          recordSentGroupMessage(matchedGroup, sentMsg.id, convTurn.replyText, currentAcc.id);
         }
 
         thread.push({ role: 'bot', text: convTurn.replyText, timestamp: Date.now() });
@@ -17804,6 +18390,25 @@ async function handleRealtimeIncomingGroupMessage(client: any, event: any, msg: 
           'success',
           `💬 [مکالمه گروهی - الگوریتم چت ناشناس] پاسخ (${convTurn.usedAi ? 'هوش مصنوعی' : 'طبیعی'} | نیت: ${convTurn.intent} | امتیاز: ${convTurn.leadScore}) با ریپلای به «${senderFirstName}» در گروه "${matchedGroup.title}": "${convTurn.replyText}"`
         );
+
+        // If user asks about prices, plans or banner in conversation, also provide the banner photo
+        const userAskedForPriceOrBanner = rawMsgText.includes('قیمت') || rawMsgText.includes('تعرفه') || rawMsgText.includes('چنده') || rawMsgText.includes('بنر') || rawMsgText.includes('عکس') || convTurn.intent === 'PLAN_REQUEST' || convTurn.intent === 'PRICE_REQUEST';
+        if (userAskedForPriceOrBanner && config.strategy2.sendBannerInGroupReply !== false) {
+          try {
+            const bannerPath = await getImageFilePathForTelegram(activeCampaign.imageUrl || '');
+            if (bannerPath && fs.existsSync(bannerPath)) {
+              await new Promise(r => setTimeout(r, 1200));
+              const supportHandle = (config.strategy2.supportContactHandle || activeCampaign.contactHandle || '@Nova_vpn10');
+              const cleanSupport = (supportHandle && supportHandle !== 'در عکس بالا') ? supportHandle : '@Nova_vpn10';
+              const bannerCaption = `📌 مشخصات و تعرفه سرورها\n👤 پشتیبانی و تست رایگان: ${cleanSupport}`;
+              await client.sendFile(peer, {
+                file: bannerPath,
+                caption: bannerCaption,
+                replyTo: msg.id,
+              }).catch(() => {});
+            }
+          } catch (bErr) {}
+        }
       }
       return;
     }
@@ -17814,10 +18419,6 @@ async function handleRealtimeIncomingGroupMessage(client: any, event: any, msg: 
 
     config.strategy2.totalLeadsDetected = (config.strategy2.totalLeadsDetected || 0) + 1;
     config.strategy2.lastLeadDetectedAt = new Date().toISOString();
-    addLog(
-      'success',
-      `🎯 [شکار لید در گروه] پیام کاربر «${senderFirstName}» (@${senderUsername || senderId}) در گروه «${matchedGroup.title}» تطابق یافت: «${rawMsgText.slice(0, 45)}»`
-    );
 
     const supportContact = String(config.strategy2.supportContactHandle || activeCampaign.contactHandle || '').replace(/^@+/, '').toLowerCase();
     if (supportContact && supportContact !== 'در عکس بالا' && rawMsgText.toLowerCase().includes(supportContact)) {
@@ -17830,6 +18431,81 @@ async function handleRealtimeIncomingGroupMessage(client: any, event: any, msg: 
     if (senderId && (now - lastUserReplyTs < 10 * 60 * 1000)) {
       return; // Same user already replied to recently in this group
     }
+
+    const cleanUsername = (senderUsername || '').replace(/^@+/, '').trim();
+    const hasValidUsername = cleanUsername.length > 0;
+
+    // Check if batch lead replies mode is enabled (default true)
+    if (config.strategy2.enableBatchLeadReplies !== false) {
+      // If user has NO username, user directive: "نهایتا تا 10 کاربر اگر ایدی داشتن، اگر نداشتن بیخیالشون شیم"
+      if (!hasValidUsername && config.strategy2.requireUsernameForBatch !== false) {
+        addLog(
+          'info',
+          `🎯 [شکار لید بدون آیدی] پیام کاربر «${senderFirstName}» در گروه «${matchedGroup.title}» شناسایی شد؛ اما چون آیدی (@username) ندارد طبق دستور برای منشن تجمیعی نادیده گرفته شد.`
+        );
+        return;
+      }
+
+      addLog(
+        'success',
+        `🎯 [شکار لید در گروه] پیام کاربر «${senderFirstName}» (@${cleanUsername || senderId}) در گروه «${matchedGroup.title}» تطابق یافت: «${rawMsgText.slice(0, 45)}»`
+      );
+
+      const groupBufferKey = matchedGroup.id || matchedGroup.title;
+      let bufState = groupLeadBufferMap.get(groupBufferKey);
+      if (!bufState) {
+        bufState = { leads: [], timer: null, isProcessing: false };
+        groupLeadBufferMap.set(groupBufferKey, bufState);
+      }
+
+      const existingLeadIdx = bufState.leads.findIndex(l => l.senderId === senderId || (cleanUsername && l.senderUsername === cleanUsername));
+      const bufferedLead: BufferedGroupLead = {
+        senderId,
+        senderFirstName,
+        senderUsername: cleanUsername,
+        userMessageText: rawMsgText,
+        userMessageId: msg.id,
+        category: leadRes.category,
+        matchedKeywords: leadRes.matchedKeywords,
+        timestamp: now,
+        msg,
+        client,
+        currentAcc,
+        matchedGroup,
+      };
+
+      if (existingLeadIdx >= 0) {
+        bufState.leads[existingLeadIdx] = bufferedLead;
+      } else {
+        bufState.leads.push(bufferedLead);
+      }
+
+      const maxBatchUsers = Math.min(10, Math.max(2, config.strategy2.batchLeadMaxUsers || 5));
+      const waitSeconds = Math.max(10, config.strategy2.batchLeadWaitSeconds || 25);
+
+      addLog(
+        'info',
+        `📥 [صف تجمیع لید گروه] کاربر @${cleanUsername} به صف پاسخ تجمیعی گروه "${matchedGroup.title}" اضافه شد (تعداد در صف: ${bufState.leads.length} از ${maxBatchUsers}).`
+      );
+
+      if (bufState.leads.length >= maxBatchUsers) {
+        if (bufState.timer) {
+          clearTimeout(bufState.timer);
+          bufState.timer = null;
+        }
+        flushGroupLeadBuffer(groupBufferKey);
+      } else if (!bufState.timer) {
+        bufState.timer = setTimeout(() => {
+          flushGroupLeadBuffer(groupBufferKey);
+        }, waitSeconds * 1000);
+      }
+      return;
+    }
+
+    addLog(
+      'success',
+      `🎯 [شکار لید در گروه] پیام کاربر «${senderFirstName}» (@${cleanUsername || senderId}) در گروه «${matchedGroup.title}» تطابق یافت: «${rawMsgText.slice(0, 45)}»`
+    );
 
     // Natural inter-reply pacing in the same group (e.g. 45 seconds between distinct replies to different users)
     const minGroupPacingMs = Math.min((config.strategy2.groupCooldownMinutes ?? 1) * 60 * 1000, 45 * 1000);
@@ -17877,52 +18553,29 @@ async function handleRealtimeIncomingGroupMessage(client: any, event: any, msg: 
         if (config.strategy2.autoSkipLockedRestrictedGroups && isStrictlyForbidden) {
           // Strictly announcement-only or userbot permanently restricted in this group
         } else if (convTurn.replyText) {
-          let sentMsg: any = null;
-          try {
-            if (typeof msg.reply === 'function') {
-              sentMsg = await msg.reply({ message: convTurn.replyText });
-            }
-          } catch (rErr: any) {
-            const errStr = String(rErr?.message || rErr || '').toLowerCase();
-            const waitMatch = errStr.match(/wait of (\d+) seconds/i) || errStr.match(/slowmode_wait_(\d+)/i);
-            if (waitMatch && parseInt(waitMatch[1], 10) <= 12) {
-              const waitSec = parseInt(waitMatch[1], 10);
-              await new Promise(r => setTimeout(r, (waitSec + 1) * 1000));
-              try {
-                sentMsg = await msg.reply({ message: convTurn.replyText });
-              } catch (e) {}
-            } else if (errStr.includes('chat_write_forbidden') || errStr.includes('not enough rights') || errStr.includes('user_banned_in_channel')) {
-              matchedGroup.canSendMessages = false;
-              matchedGroup.readinessStatus = 'no_permission_left';
-              matchedGroup.errorMessage = 'عدم دسترسی ارسال پیام در گروه (محدودیت ادمین)';
-            }
+          let peerForReply = msg.peerId || msg.chat;
+          if (!peerForReply && matchedGroup.usernameOrLink) {
+            peerForReply = await resolveAndJoinGroup(client, matchedGroup.usernameOrLink).catch(() => null);
           }
 
-          if (!sentMsg && matchedGroup.canSendMessages !== false) {
+          let sendRes: SendGroupReplyResult = { sentMsg: null, bannerSent: false, isRichMedia: false };
+          if (peerForReply) {
             try {
-              const peer = await resolveAndJoinGroup(client, matchedGroup.usernameOrLink);
-              if (peer) {
-                sentMsg = await client.sendMessage(peer, {
-                  message: convTurn.replyText,
-                  replyTo: msg.id,
-                });
-              }
+              sendRes = await sendGroupReplyWithBanner({
+                client,
+                peer: peerForReply,
+                replyToMsgId: msg.id,
+                replyText: convTurn.replyText,
+                matchedGroup,
+                activeCampaign,
+                config,
+                userMessageText: rawMsgText,
+                intent: convTurn.intent,
+                isFollowUpTurn: false,
+              });
             } catch (rErr: any) {
               const errStr = String(rErr?.message || rErr || '').toLowerCase();
-              const waitMatch = errStr.match(/wait of (\d+) seconds/i) || errStr.match(/slowmode_wait_(\d+)/i);
-              if (waitMatch && parseInt(waitMatch[1], 10) <= 12) {
-                const waitSec = parseInt(waitMatch[1], 10);
-                await new Promise(r => setTimeout(r, (waitSec + 1) * 1000));
-                try {
-                  const peer = await resolveAndJoinGroup(client, matchedGroup.usernameOrLink);
-                  if (peer) {
-                    sentMsg = await client.sendMessage(peer, {
-                      message: convTurn.replyText,
-                      replyTo: msg.id,
-                    });
-                  }
-                } catch (e) {}
-              } else if (errStr.includes('chat_write_forbidden') || errStr.includes('not enough rights') || errStr.includes('user_banned_in_channel')) {
+              if (errStr.includes('chat_write_forbidden') || errStr.includes('not enough rights') || errStr.includes('user_banned_in_channel')) {
                 matchedGroup.canSendMessages = false;
                 matchedGroup.readinessStatus = 'no_permission_left';
                 matchedGroup.errorMessage = 'عدم دسترسی ارسال پیام در گروه (محدودیت ادمین)';
@@ -17930,6 +18583,7 @@ async function handleRealtimeIncomingGroupMessage(client: any, event: any, msg: 
             }
           }
 
+          const sentMsg = sendRes.sentMsg;
           if (sentMsg) {
             // Self-healing: restore group status to ready on successful reply!
             matchedGroup.canSendMessages = true;
@@ -17937,12 +18591,7 @@ async function handleRealtimeIncomingGroupMessage(client: any, event: any, msg: 
             matchedGroup.errorMessage = undefined;
 
             if (sentMsg.id) {
-              const mySentKey = `${matchedGroup.id || matchedGroup.title}_${sentMsg.id}`;
-              recentBotSentGroupMessageMap.set(mySentKey, {
-                accountId: currentAcc.id,
-                text: convTurn.replyText,
-                timestamp: Date.now(),
-              });
+              recordSentGroupMessage(matchedGroup, sentMsg.id, convTurn.replyText, currentAcc.id);
             }
 
             // Initialize conversation thread for this user
@@ -17960,20 +18609,20 @@ async function handleRealtimeIncomingGroupMessage(client: any, event: any, msg: 
             // Record real-time lead event in recentLeads for visibility in UI table & metrics
             const realTimeLeadEvent: GroupLeadEvent = {
               id: `lead_rt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+              timestamp: new Date(now).toISOString(),
               groupId: matchedGroup.id || String(matchedGroup.telegramChatId || matchedGroup.title),
               groupTitle: matchedGroup.title,
-              groupUsername: matchedGroup.usernameOrLink,
-              userMessageId: msg.id,
+              originalMessageId: msg.id,
               userId: senderId,
               userFirstName: senderFirstName,
               userUsername: senderUsername,
-              messageText: rawMsgText,
-              matchedCategory: leadRes.category,
-              matchedKeywords: leadRes.matchedKeywords,
-              status: 'replied_group',
+              originalMessageText: rawMsgText,
+              detectedCategory: leadRes.category,
+              detectedKeywords: leadRes.matchedKeywords,
+              groupReplySent: true,
               groupReplyText: convTurn.replyText,
-              detectedAt: new Date(now).toISOString(),
-              repliedAt: new Date().toISOString(),
+              pvSent: false,
+              status: 'replied_group',
             };
             config.recentLeads = config.recentLeads || [];
             config.recentLeads.unshift(realTimeLeadEvent);
@@ -17982,49 +18631,11 @@ async function handleRealtimeIncomingGroupMessage(client: any, event: any, msg: 
             }
             saveData();
 
+            const bannerNotice = sendRes.bannerSent ? (sendRes.isRichMedia ? ' 🖼️ [همراه با بنر تصویری غنی]' : ' 🖼️ [همراه با بنر تصویری]') : '';
             addLog(
               'success',
-              `⚡ [شنود لحظه‌ای - الگوریتم چت ناشناس] ریپلای هوشمند (${convTurn.usedAi ? 'هوش مصنوعی' : 'طبیعی'} | نیت: ${convTurn.intent}) به کاربر «${senderFirstName}» در گروه "${matchedGroup.title}" توسط اکانت (${currentAcc.phoneNumber}): "${convTurn.replyText}"`
+              `⚡ [شنود لحظه‌ای - الگوریتم چت ناشناس${bannerNotice}] ریپلای هوشمند (${convTurn.usedAi ? 'هوش مصنوعی' : 'طبیعی'} | نیت: ${convTurn.intent}) به کاربر «${senderFirstName}» در گروه "${matchedGroup.title}" توسط اکانت (${currentAcc.phoneNumber}): "${convTurn.replyText}"`
             );
-          }
-
-          // Optional banner after reply
-          if (config.strategy2.sendBannerInGroupReply !== false && activeCampaign.imageUrl) {
-            try {
-              const bannerPath = await getImageFilePathForTelegram(activeCampaign.imageUrl);
-              if (bannerPath && fs.existsSync(bannerPath)) {
-                await new Promise(r => setTimeout(r, 1500));
-                const supportHandle = (config.strategy2.supportContactHandle || activeCampaign.contactHandle || '@Nova_vpn10');
-                const cleanSupport = (supportHandle && supportHandle !== 'در عکس بالا') ? supportHandle : '@Nova_vpn10';
-                const bannerCaption = `📌 لیست تعرفه‌ها و مشخصات سرورها\n👤 ارتباط با پشتیبانی و دریافت تست رایگان: ${cleanSupport}`;
-
-                let peerForFile: any = msg.peerId || msg.chat;
-                if (!peerForFile && matchedGroup.usernameOrLink) {
-                  peerForFile = await resolveAndJoinGroup(client, matchedGroup.usernameOrLink).catch(() => null);
-                }
-                if (peerForFile) {
-                  try {
-                    await client.sendFile(peerForFile, {
-                      file: bannerPath,
-                      caption: bannerCaption,
-                      replyTo: msg.id,
-                    });
-                  } catch (fileErr: any) {
-                    const fErrStr = String(fileErr?.message || fileErr?.errorMessage || fileErr || '');
-                    const waitMatch = fErrStr.match(/wait of (\d+) seconds/i) || fErrStr.match(/SLOWMODE_WAIT_(\d+)/i);
-                    if (waitMatch && parseInt(waitMatch[1], 10) <= 12) {
-                      const waitSec = parseInt(waitMatch[1], 10);
-                      await new Promise(r => setTimeout(r, (waitSec + 1) * 1000));
-                      await client.sendFile(peerForFile, {
-                        file: bannerPath,
-                        caption: bannerCaption,
-                        replyTo: msg.id,
-                      }).catch(() => {});
-                    }
-                  }
-                }
-              }
-            } catch (bErr) {}
           }
 
           // Optional background PV message to lead
@@ -19540,13 +20151,6 @@ async function runGroupPromotionListenerStep() {
 
           config.strategy2.totalMessagesScanned = (config.strategy2.totalMessagesScanned || 0) + 1;
 
-          // Detect Lead
-          const leadRes = detectLeadInMessage(msg.message, config.strategy2.keywords);
-          if (!leadRes.isMatch) continue;
-
-          config.strategy2.totalLeadsDetected = (config.strategy2.totalLeadsDetected || 0) + 1;
-          config.strategy2.lastLeadDetectedAt = new Date().toISOString();
-
           // Resolve sender
           let sender: any = null;
           let senderId = '';
@@ -19578,18 +20182,72 @@ async function runGroupPromotionListenerStep() {
             continue;
           }
 
+          // Detect if message is a reply to our bot or part of an active conversation thread
+          const replyMsgId = msg.replyToMsgId || msg.replyTo?.replyToMsgId || msg.replyToHeader?.replyToMsgId;
+          let isReplyToOurBot = false;
+          let repliedBotMsgText = '';
+
+          if (replyMsgId) {
+            const sentRecord = findSentGroupMessage(group, replyMsgId);
+            if (sentRecord) {
+              isReplyToOurBot = true;
+              repliedBotMsgText = sentRecord.text;
+            }
+          }
+
+          const userInGroupKey = `${group.id || group.title}_${senderId}`;
+          let thread = groupConversationThreads.get(userInGroupKey) || [];
+          const existingConvEntry = getGroupConversationEntry(
+            group.id || String(group.telegramChatId || group.title),
+            senderId
+          );
+          if (!repliedBotMsgText && existingConvEntry?.lastBotReplyText) {
+            repliedBotMsgText = existingConvEntry.lastBotReplyText;
+          }
+          if (thread.length === 0 && existingConvEntry?.history && existingConvEntry.history.length > 0) {
+            thread = existingConvEntry.history.map(h => ({
+              role: h.sender === 'stranger' ? 'user' : 'bot',
+              text: h.text,
+              timestamp: h.timestamp ? new Date(h.timestamp).getTime() : Date.now(),
+            }));
+            groupConversationThreads.set(userInGroupKey, thread);
+          }
+          const hasActiveThread = Boolean(
+            (thread.length > 0 || (existingConvEntry && existingConvEntry.history.length > 0)) &&
+            (Date.now() - Math.max(thread[thread.length - 1]?.timestamp || 0, existingConvEntry?.lastActiveAt || 0) < 30 * 60 * 1000)
+          );
+
+          const isInteractiveReply = (isReplyToOurBot || hasActiveThread) && config.strategy2.replyToUserRepliesInGroup !== false;
+
+          // Detect Lead (if not interactive reply, check keywords)
+          const leadRes = detectLeadInMessage(msg.message, config.strategy2.keywords);
+          if (!isInteractiveReply && !leadRes.isMatch) continue;
+
+          if (leadRes.isMatch) {
+            config.strategy2.totalLeadsDetected = (config.strategy2.totalLeadsDetected || 0) + 1;
+            config.strategy2.lastLeadDetectedAt = new Date().toISOString();
+          }
+
           // 2. Anti-Self-Loop: Skip if message mentions our own contact handle or is our own ad
           const supportContact = String(config.strategy2.supportContactHandle || activeCampaign.contactHandle || '').replace(/^@+/, '').toLowerCase();
           if (supportContact && supportContact !== 'در عکس بالا' && msg.message.toLowerCase().includes(supportContact)) {
             continue;
           }
 
-          // Check user cooldown in this group (10 minutes)
           const now = Date.now();
-          const userInGroupKey = `${group.id || group.title}_${senderId}`;
           const lastUserReplyTs = groupUserReplyMap.get(userInGroupKey) || 0;
-          if (senderId && (now - lastUserReplyTs < 10 * 60 * 1000)) {
-            continue; // Same user already replied to recently in this group
+
+          if (isInteractiveReply) {
+            const maxRounds = Math.max(config.strategy2.maxConsecutiveRepliesPerUser || 12, 12);
+            const botRepliesCount = thread.filter(t => t.role === 'bot').length;
+            if (botRepliesCount >= maxRounds) {
+              continue; // Max rounds reached for this user in this group
+            }
+          } else {
+            // Check user cooldown in this group (10 minutes) for cold leads
+            if (senderId && (now - lastUserReplyTs < 10 * 60 * 1000)) {
+              continue; // Same user already replied to recently in this group
+            }
           }
 
           // Natural inter-reply pacing in this group (45s between distinct replies)
@@ -19633,7 +20291,8 @@ async function runGroupPromotionListenerStep() {
                   senderFirstName,
                   senderUsername,
                   campaign: activeCampaign,
-                  isInitialLeadMatch: true,
+                  isInitialLeadMatch: !isInteractiveReply,
+                  repliedBotMessageText: repliedBotMsgText,
                   leadCategory: leadRes.category,
                   matchedKeywords: leadRes.matchedKeywords,
                   anonymousInstructions: appState.anonymousAutomator?.instructions,
@@ -19641,31 +20300,19 @@ async function runGroupPromotionListenerStep() {
                 });
                 groupReplyText = convTurn.replyText;
 
-                let sentGroupReply: any = null;
-                try {
-                  sentGroupReply = await groupClient.sendMessage(peer, {
-                    message: groupReplyText,
-                    replyTo: msg.id,
-                  });
-                } catch (sendErr: any) {
-                  const sErr = String(sendErr?.message || sendErr || '').toLowerCase();
-                  const waitMatch = sErr.match(/wait of (\d+) seconds/i) || sErr.match(/slowmode_wait_(\d+)/i);
-                  if (waitMatch && parseInt(waitMatch[1], 10) <= 12) {
-                    const waitSec = parseInt(waitMatch[1], 10);
-                    await new Promise(r => setTimeout(r, (waitSec + 1) * 1000));
-                    try {
-                      sentGroupReply = await groupClient.sendMessage(peer, {
-                        message: groupReplyText,
-                        replyTo: msg.id,
-                      });
-                    } catch (e) {}
-                  } else if (sErr.includes('chat_write_forbidden') || sErr.includes('not enough rights') || sErr.includes('user_banned_in_channel')) {
-                    group.canSendMessages = false;
-                    group.readinessStatus = 'no_permission_left';
-                    group.errorMessage = 'عدم دسترسی ارسال پیام در گروه (محدودیت ادمین)';
-                  }
-                  if (!sentGroupReply) throw sendErr;
-                }
+                const sendRes = await sendGroupReplyWithBanner({
+                  client: groupClient,
+                  peer,
+                  replyToMsgId: msg.id,
+                  replyText: groupReplyText,
+                  matchedGroup: group,
+                  activeCampaign,
+                  config,
+                  userMessageText: msg.message,
+                  intent: convTurn.intent,
+                  isFollowUpTurn: isInteractiveReply,
+                });
+                const sentGroupReply = sendRes.sentMsg;
 
                 if (sentGroupReply && sentGroupReply.id) {
                   // Self-healing: group accepted the message!
@@ -19673,12 +20320,7 @@ async function runGroupPromotionListenerStep() {
                   group.readinessStatus = 'ready';
                   group.errorMessage = undefined;
 
-                  const mySentKey = `${group.id || group.title}_${sentGroupReply.id}`;
-                  recentBotSentGroupMessageMap.set(mySentKey, {
-                    accountId: groupAccount?.id || '',
-                    text: groupReplyText,
-                    timestamp: Date.now(),
-                  });
+                  recordSentGroupMessage(group, sentGroupReply.id, groupReplyText, groupAccount?.id || '');
                 }
 
                 const convKey = `${group.id || group.title}_${senderId}`;
@@ -19693,63 +20335,15 @@ async function runGroupPromotionListenerStep() {
                 groupCooldownMap.set(group.id || group.title, now);
                 groupUserReplyMap.set(userInGroupKey, now);
 
-              addLog(
-                'success',
-                `💬 [شنود دوره‌ای - الگوریتم چت ناشناس] ریپلای هوشمند (${convTurn.usedAi ? 'هوش مصنوعی' : 'طبیعی'} | نیت: ${convTurn.intent}) به کاربر «${senderFirstName}» در گروه "${group.title}": "${groupReplyText}"`
-              );
+                const bannerNotice = sendRes.bannerSent ? (sendRes.isRichMedia ? ' 🖼️ [همراه با بنر تصویری غنی]' : ' 🖼️ [همراه با بنر تصویری]') : '';
+                addLog(
+                  'success',
+                  `💬 [شنود دوره‌ای - الگوریتم چت ناشناس${bannerNotice}] ریپلای هوشمند (${convTurn.usedAi ? 'هوش مصنوعی' : 'طبیعی'} | نیت: ${convTurn.intent}) به کاربر «${senderFirstName}» در گروه "${group.title}": "${groupReplyText}"`
+                );
 
-              if (groupAccount) {
-                groupAccount.dailySentCount = (groupAccount.dailySentCount || 0) + 1;
-              }
-
-              // Send campaign banner image in group reply if enabled and available
-              const shouldSendGroupBanner = config.strategy2.sendBannerInGroupReply !== false;
-              let bannerSentInGroup = false;
-              if (shouldSendGroupBanner && activeCampaign.imageUrl) {
-                try {
-                  const bannerPath = await getImageFilePathForTelegram(activeCampaign.imageUrl);
-                  if (bannerPath && fs.existsSync(bannerPath)) {
-                    await new Promise(r => setTimeout(r, 1500));
-                    await simulateTypingOnPeer(groupClient, peer, 800);
-                    const supportHandle = (config.strategy2.supportContactHandle || activeCampaign.contactHandle || '@Nova_vpn10');
-                    const cleanSupport = (supportHandle && supportHandle !== 'در عکس بالا') ? supportHandle : '@Nova_vpn10';
-                    const bannerCaption = `📌 لیست تعرفه‌ها و مشخصات سرورها\n👤 ارتباط با پشتیبانی و دریافت تست رایگان: ${cleanSupport}`;
-                    try {
-                      await groupClient.sendFile(peer, {
-                        file: bannerPath,
-                        caption: bannerCaption,
-                        replyTo: msg.id,
-                      });
-                      bannerSentInGroup = true;
-                    } catch (sendImgErr: any) {
-                      const imgErrStr = String(sendImgErr?.message || sendImgErr?.errorMessage || sendImgErr || '');
-                      const waitMatch = imgErrStr.match(/wait of (\d+) seconds/i) || imgErrStr.match(/SLOWMODE_WAIT_(\d+)/i);
-                      if (waitMatch && parseInt(waitMatch[1], 10) <= 12) {
-                        const waitSec = parseInt(waitMatch[1], 10);
-                        await new Promise(r => setTimeout(r, (waitSec + 1) * 1000));
-                        await groupClient.sendFile(peer, {
-                          file: bannerPath,
-                          caption: bannerCaption,
-                          replyTo: msg.id,
-                        });
-                        bannerSentInGroup = true;
-                      } else if (waitMatch) {
-                        addLog('info', `[ریپلای گروه] گروه "${group.title}" دارای حالت اسلومود (${waitMatch[1]} ثانیه) است؛ بنر پس از متن ارسال نشد.`);
-                      } else {
-                        addLog('info', `[ریپلای گروه] عدم امکان ارسال بنر در گروه "${group.title}": ${imgErrStr.slice(0, 80)}`);
-                      }
-                    }
-                  }
-                } catch (imgErr: any) {
-                  const imgErrStr = String(imgErr?.message || imgErr || '');
-                  addLog('info', `[ریپلای گروه] خطا در فایل بنر گروه "${group.title}": ${imgErrStr.slice(0, 80)}`);
+                if (groupAccount) {
+                  groupAccount.dailySentCount = (groupAccount.dailySentCount || 0) + 1;
                 }
-              }
-
-              addLog(
-                'success',
-                `[استراتژی دوم - ریپلای گروه] پاسخ هوشمند${bannerSentInGroup ? ' به همراه بنر تعرفه‌ها' : ''} توسط اکانت (${groupAccount?.phoneNumber || 'اصلی'}) به پیام "${msg.message.slice(0, 30)}..." در گروه "${group.title}" ارسال شد.`
-              );
             } catch (rErr: any) {
               groupReplyError = rErr?.message || String(rErr);
               const isPermissionErr = groupReplyError.includes('CHAT_WRITE_FORBIDDEN') ||

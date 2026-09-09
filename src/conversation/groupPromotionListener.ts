@@ -645,27 +645,32 @@ export function cleanTelegramChatText(raw: string): string {
  */
 export function getSmartFallbackGroupConversationReply(userText: string, campaign: ProductCampaign): string {
   const t = (userText || '').toLowerCase();
-  const contact = 'nova_vpn10';
+  const rawHandle = (campaign?.contactHandle && campaign.contactHandle !== 'در عکس بالا') ? campaign.contactHandle : '@Nova_vpn10';
+  const displayHandle = rawHandle.startsWith('@') ? rawHandle : `@${rawHandle}`;
+
   if (t.includes('چند') || t.includes('قیمت') || t.includes('هزینه') || t.includes('تعرفه') || t.includes('تومن')) {
-    return 'تک کاربره ۵۹ دو کاربره ۸۹ تومنه';
+    return `تک کاربره ۵۹ دو کاربره ۸۹ تومنه، به ${displayHandle} پیام بدی تست رایگان میده اول چک کن`;
   }
   if (t.includes('تست') || t.includes('امتحان') || t.includes('رایگان') || t.includes('دمو')) {
-    return `اره تست رایگان داره به ${contact} پیام بده میده بهت`;
+    return `آره تست رایگان داره، به آیدی ${displayHandle} پیام بده سریع میده بهت`;
+  }
+  if (t.includes('چیه') || t.includes('چی هست') || t.includes('یعنی چی') || t.includes('نوا چیه')) {
+    return `فیلترشکن اختصاصی ضد قطعیه، به آیدی ${displayHandle} پیام بدی تست رایگان میده تست کنی`;
   }
   if (t.includes('همراه') || t.includes('ایرانسل') || t.includes('رایتل') || t.includes('مخابرات') || t.includes('وای فای') || t.includes('مودم')) {
-    return 'رو همراه اول و ایرانسل عالیه بدون قطعی میده';
+    return `رو همراه اول و ایرانسل عالیه بدون قطعی میده، از ${displayHandle} تست رایگان بگیر`;
   }
   if (t.includes('قطعی') || t.includes('قطع') || t.includes('وصل') || t.includes('کار میکنه') || t.includes('واقعا')) {
-    return 'من خودم دو ماهه دارم اصلا قطعی نداشته خوبه';
+    return `من خودم چند وقته دارم اصلا قطعی نداشته، خواستی به ${displayHandle} بگو تست رایگان بده خودت ببین`;
   }
   if (t.includes('پینگ') || t.includes('بازی') || t.includes('گیم') || t.includes('لگ')) {
-    return 'پینگش خیلی خوب و پایینه برای بازی جوابه';
+    return `پینگش پایینه برای گیم جوابه، به ${displayHandle} بگو تست رایگان میده امتحان کن`;
   }
   if (t.includes('آیفون') || t.includes('اندروید') || t.includes('ویندوز') || t.includes('ios')) {
-    return 'رو همه گوشیا نرم افزار داره وصل میشه';
+    return `رو همه گوشیا نرم‌افزار داره، به ${displayHandle} بگو با کانفیگ تست بهت میده`;
   }
   if (t.includes('از کجا') || t.includes('چطور') || t.includes('آیدی') || t.includes('لینک') || t.includes('خرید')) {
-    return `به آیدی ${contact} پیام بده راهنماییت میکنه`;
+    return `به آیدی ${displayHandle} پیام بده سریع تحویلت میده`;
   }
   if (t.includes('مرسی') || t.includes('دمت') || t.includes('ممنون') || t.includes('تشکر') || t.includes('عشقی')) {
     return 'فدات عزیزم کاری داشتی بگو';
@@ -674,9 +679,9 @@ export function getSmartFallbackGroupConversationReply(userText: string, campaig
     return 'سلام قربانت خوبی چه خبر';
   }
   if (t.includes('نه') || t.includes('نمیخوام') || t.includes('تبلیغ') || t.includes('گرون')) {
-    return 'باشه هر جور راحتی عزیزم';
+    return 'باشه عزیزم هر جور راحتی';
   }
-  return `خواستی خودت تست کن به ${contact} بگو تست میده`;
+  return `من از نوا وی‌پی‌ان گرفتم راضیم، خواستی به ${displayHandle} بگو تست رایگان میده`;
 }
 
 // ----------------------------------------------------------------------------
@@ -771,14 +776,21 @@ export async function processGroupLeadConversationTurn(
   const key = getGroupConversationKey(groupId, senderId);
   let entry = groupUserConversationStore.get(key);
 
+  const rawContactHandle = String(campaign.contactHandle || '@Nova_vpn10');
+  const cleanContactHandle = (rawContactHandle && rawContactHandle !== 'در عکس بالا') ? rawContactHandle.replace(/^@+/, '') : 'Nova_vpn10';
+  const displayHandle = `@${cleanContactHandle}`;
+
   const productConfig: ProductConfig = {
     ...DEFAULT_NOVA_VPN_CONFIG,
     productName: campaign.title || 'نوا وی پی ان',
     productDescription: campaign.description || DEFAULT_NOVA_VPN_CONFIG.productDescription,
     tagline: campaign.title || DEFAULT_NOVA_VPN_CONFIG.tagline,
+    support: {
+      handle: cleanContactHandle,
+      link: `https://t.me/${cleanContactHandle}`,
+      operatingHours: DEFAULT_NOVA_VPN_CONFIG.support?.operatingHours || '۲۴ ساعته',
+    },
   };
-
-  const contactHandle = String(campaign.contactHandle || '@Nova_vpn10').replace(/^@+/, '');
 
   if (!entry) {
     const freshContext = createInitialConversationContext(
@@ -792,6 +804,11 @@ export async function processGroupLeadConversationTurn(
       freshContext.intent = Intent.VPN_REQUEST;
       freshContext.detectedIntentsHistory = [Intent.VPN_REQUEST];
     }
+    // Always permit support ID and promotion in group conversations
+    freshContext.supportIdAvailable = true;
+    freshContext.coinRewarded = true;
+    freshContext.mediaUnlocked = true;
+    freshContext.elapsedSeconds = 300;
     entry = {
       context: freshContext,
       history: [],
@@ -802,6 +819,12 @@ export async function processGroupLeadConversationTurn(
       groupTitle,
     };
     groupUserConversationStore.set(key, entry);
+  } else {
+    // Keep support ID and promotion enabled across turns in groups
+    entry.context.supportIdAvailable = true;
+    entry.context.coinRewarded = true;
+    entry.context.mediaUnlocked = true;
+    entry.context.elapsedSeconds = Math.max(entry.context.elapsedSeconds || 0, 300);
   }
 
   // Record user turn in history
@@ -850,20 +873,22 @@ export async function processGroupLeadConversationTurn(
 
   // Prepare fallback text deterministically from conversationEngine results
   let smartFallback = getSmartFallbackGroupConversationReply(userMessageText, campaign);
-  if (currentIntent === Intent.PRICE_REQUEST || currentIntent === Intent.PLAN_REQUEST) {
-    smartFallback = `تک کاربره ۵۹ دو کاربره ۸۹ تومنه، خواستی تست رایگان هم دارن قبلش چک کنی`;
+  if (isInitialLeadMatch) {
+    smartFallback = `من خودم چند وقته از نوا وی‌پی‌ان استفاده می‌کنم بدون قطعیه، به آیدی ${displayHandle} پیام بدی تست رایگان میده رو خطت چک کن`;
+  } else if (currentIntent === Intent.PRICE_REQUEST || currentIntent === Intent.PLAN_REQUEST) {
+    smartFallback = `تک کاربره ۵۹ دو کاربره ۸۹ تومنه، خواستی به ${displayHandle} پیام بده تست رایگان میده اول چک کن`;
   } else if (currentIntent === Intent.TRIAL_REQUEST) {
-    smartFallback = `به آیدی ${contactHandle} پیام بده بگو تست می‌خوام رایگان میده بهت`;
+    smartFallback = `به آیدی ${displayHandle} پیام بده بگو تست می‌خوام سریع برات می‌فرسته`;
   } else if (currentIntent === Intent.OBJECTION) {
     if (String(objectionCategory).toUpperCase().includes('PRICE')) {
-      smartFallback = `سروراش اختصاصیه قطعی نداره، اول تست رایگان بگیر چک کن اگه راضی بودی بعد بردار`;
+      smartFallback = `هزینه‌ش کمه ولی سروراش اختصاصیه، اول از ${displayHandle} تست رایگان بگیر چک کن بعد بردار`;
     } else if (String(objectionCategory).toUpperCase().includes('TRUST')) {
-      smartFallback = `حق داری الان خیلیا کلاهبردارن، برای همین اول تست رایگان میده که خیالت راحت بشه`;
+      smartFallback = `حق داری، برای همین اول به ${displayHandle} پیام بده تست رایگان میده که خیالت راحت شه`;
     } else {
-      smartFallback = `اول تست رایگان بگیر خودت رو گوشی چک کن بعد تصمیم بگیر`;
+      smartFallback = `اول از پشتیبانی ${displayHandle} تست رایگان بگیر خودت رو گوشی چک کن بعد تصمیم بگیر`;
     }
   } else if (currentIntent === Intent.PURCHASE_INTENT) {
-    smartFallback = `به آیدی ${contactHandle} پیام بده سریع تحویلت میده`;
+    smartFallback = `به آیدی ${displayHandle} پیام بده سریع اکانت رو تحویلت میده`;
   } else if (currentIntent === Intent.GOODBYE) {
     smartFallback = `فدات کاری داشتی بگو`;
   } else if (currentIntent === Intent.GREETING) {
@@ -884,31 +909,51 @@ export async function processGroupLeadConversationTurn(
       ? `\n[دستورالعمل‌های تکمیلی لحن و استراتژی]:\n${String(anonymousInstructions.systemPrompt).slice(0, 400)}`
       : '';
 
-    const groupPrompt = `شما به عنوان یک کاربر عادی و مشتری راضی فیلترشکن اختصاصی در گروه تلگرامی هستید.
-شما در حال چت و پاسخ دادن به پیام کاربری در این گروه هستید.
-پیام کاربر در گروه: "${userMessageText}"
+    let groupPrompt = '';
+    if (isInitialLeadMatch) {
+      groupPrompt = `شما به عنوان یک کاربر عادی و مشتری کاملاً راضی فیلترشکن اختصاصی ${campaign.title || 'نوا وی پی ان'} در یک گروه تلگرامی هستید.
+کاربری در این گروه به مشکل فیلترینگ، قطعی اینترنت، پینگ بازی، یوتیوب یا اینستاگرام اشاره کرده و نیاز به وی‌پی‌ان دارد:
+پیام کاربر نیازمند در گروه: "${userMessageText}"
+
+هدف استراتژیک شما:
+هدف صرفاً گپ زدن خالی نیست؛ هدف معرفی نامحسوس و دلسوزانه وی‌پی‌ان و هدایت کاربر به تست رایگان از طریق آیدی پشتیبانی (${displayHandle}) است.
+سبک توضیحات شما باید فوق‌العاده صمیمی، دلسوزانه و تجربی باشد (مثل دوستی که تجربه خودش را می‌گوید).
+کاربر باید متوجه شود نوا وی‌پی‌ان چیست (سرویس اختصاصی v2ray بدون قطعی) و دقیقاً چگونه می‌تواند از آیدی پشتیبانی (${displayHandle}) تست رایگان بگیرد تا کیفیت را تست کند.
+
+نمونه‌های عالی از نحوه صحبت نامحسوس و طبیعی:
+- «من خودم چند وقته از نوا وی‌پی‌ان استفاده می‌کنم پینگش برای گیم و وبگردی عالیه بدون قطعی، به آیدی ${displayHandle} پیام بدی تست رایگان میده اول رو خطت چک کن»
+- «من نوا وی‌پی‌ان دارم رو همراه اول و ایرانسل واقعاً ثابته، از پشتیبانیش ${displayHandle} تست رایگان بگیر ببین چطوره برات»
+- «کانفیگ اختصاصی نوا وی‌پی‌ان رو همراه اول و ایرانسل بدون قطعی جواب میده، به آیدی ${displayHandle} بگو تست می‌خوام سریع می‌فرسته»
+
+قوانین نگارش:
+۱. بسیار طبیعی، روان و محاوره‌ای تهرانی (حدود ۱۰ الی ۲۰ کلمه).
+۲. حتماً نام سرویس (${campaign.title || 'نوا وی پی ان'}) و آیدی پشتیبانی جهت دریافت تست رایگان (${displayHandle}) به شکلی کاملاً طبیعی در متن جا بگیرد.
+۳. بدون علائم نگارشی سنگین مانند نقطه در انتها (.) یا گیومه.
+۴. هرگز نگو ربات هستی. شما یک عضو معمولی گروه هستید.
+۵. خروجی فقط متن پاسخ بدون هیچ توضیح اضافه باشد.${personaInstructions}`;
+    } else {
+      groupPrompt = `شما به عنوان یک کاربر عادی و مشتری راضی فیلترشکن در یک گروه تلگرامی هستید.
+یکی از اعضای گروه به پیام قبلی شما ریپلای زده است و با شما گفتگو می‌کند.
 ${repliedBotMessageText ? `پیام قبلی شما به این کاربر: "${repliedBotMessageText}"` : ''}
-${historyLines ? `تاریخچه پیام‌های رد و بدل شده در این گروه:\n${historyLines}\n` : ''}
+پیام جدید و ریپلای کاربر در گروه: "${userMessageText}"
+${historyLines ? `تاریخچه گفتگوی قبلی شما با این کاربر در همین گروه:\n${historyLines}\n` : ''}
 
-[تصمیم موتور مکالمه و ماشین وضعیت]:
-- قصد تشخیص‌داده‌شده: ${currentIntent}
-- وضعیت چت: ${stepOutput.updatedContext.state}
-- امتیاز نیاز کاربر: ${stepOutput.updatedContext.leadScore}/100
-- دستورالعمل هدف این دور: ${stepOutput.promptDirective}
-${stepOutput.objectionAnalysis ? `- رفع اشکال یا نگرانی کاربر: رفع دغدغه "${objectionCategory}" با پیشنهاد تست رایگان و اطمینان‌بخشی` : ''}
-
-اطلاعات کلیدی سرویس:
-- نام سرویس: ${campaign.title || 'نوا وی پی ان'}
-- تعرفه: تک‌کاربره ۵۹ تومن، دوکاربره ۸۹ تومن (یا ${campaign.price})
-- دریافت تست رایگان و خرید: پیام به آیدی ${contactHandle} (بدون علامت @)
-- کیفیت: بدون قطعی، مناسب تمام اپراتورها (ایرانسل، همراه اول، مخابرات)، پینگ عالی
-
-قوانین حیاتی چت گروهی تلگرام (رعایت ۱۰۰٪ الزامی):
-۱. فوق‌العاده کوتاه: پاسخ شما فقط ۱ یا حداکثر ۲ جمله محاوره‌ای بسیار کوتاه باشد (حدود ۵ الی ۱۲ کلمه!).
-۲. زبان کاملاً خودمانی و محاوره‌ای تهرانی (بدون هیچ لفظ کتابی یا رسمی).
-۳. بدون علائم نگارشی سنگین مانند نقطه در انتها (.)، علامت تعجب (!)، دونقطه (:) یا گیومه.
-۴. خط قرمز: هرگز نگویید ربات یا هوش مصنوعی هستید. شما یک هم‌گروهی صمیمی هستید.
+قوانین حیاتی و استراتژیک (رعایت ۱۰۰٪ الزامی):
+۱. پاسخگویی هوشمند و منطقی به ریپلای: همیشه و در هر شرایطی بر اساس زمینه صحبت و گفتگوهای قبلی به این ریپلای پاسخی منطقی، مرتبط و هوشمند بدهید؛ حتی اگر کاربر در پیامش هیچ کلیدواژه‌ای از فیلترشکن یا اینترنت نیاورده باشد (مثلاً فقط بگوید: «چنده؟»، «واقعا خوبه؟»، «چی هست اصن؟»، «از کجا بگیرم؟»، «رو آیفون جواب میده؟»، «من ایرانسلم»).
+۲. متقاعدسازی منطقی و دلسوزانه (Persuasion): کاربر را با استدلال قانع کنید و به تست رایگان یا خرید از طریق ${displayHandle} هدایت نمایید:
+   - اگر پرسید چنده یا قیمت: قیمت منصفانه (تک‌کاربره ۵۹ تومن، دوکاربره ۸۹ تومن) را بگو و حتماً بگو اول به ${displayHandle} پیام بده تست رایگان میده که خیالت راحت شه بعد اگه خواستی بردار.
+   - اگر پرسید چی هست یا نوا چیه: بگو کانفیگ اختصاصی v2ray بدون قطعی با آی‌پی ثابته و بگو به پشتیبانی ${displayHandle} بگو تست رایگان بده خودت ببین.
+   - اگر از کیفیت یا قطعی پرسید: با اطمینان بگو خودم چند وقته دارم قطعی نداره، برای اینکه خیالت راحت شه به ${displayHandle} پیام بده اول تست رایگان بگیر روی خطت.
+   - اگر درباره اپراتورها پرسید (همراه اول/ایرانسل/وای‌فای): بگو رو تمام اپراتورها سرور جدا داره و ثابته.
+   - اگر گفت فیلترشکن پولی نمی‌خوام یا دنبال رایگانه: دلسوزانه بگو فیلترشکن رایگان همش قطع میشه، امنیت نداره و حجم نت رو تموم میکنه، این ۵۹ تومنه پول یه چیپسه و اولش هم تست رایگان میده.
+   - اگر آیدی خواست: مستقیماً آیدی ${displayHandle} رو بده.
+   - اگر نرم‌افزار خواست: بگو با v2rayNG یا v2box کار میکنه و پشتیبانی ${displayHandle} خودش نرم‌افزار و کانفیگ تست رو میده.
+   - اگر سلام، احوالپرسی یا تشکر کرد: بسیار صمیمی و دوستانه پاسخ بده.
+   - اگر نخواست یا نپذیرفت: اصرار نکن («باشه عزیزم هر جور راحتی»).
+۳. لحن و ساختار: خودمانی، عامیانه تهرانی، صمیمی، منطقی و قانع‌کننده (حدود ۸ تا ۲۲ کلمه).
+۴. بدون علائم نگارشی سنگین مانند نقطه در انتها (.) یا گیومه.
 ۵. خروجی فقط و فقط متن پیام باشد.${personaInstructions}`;
+    }
 
     const candidateModels = getAdaptiveCandidateModels();
     for (const modelName of candidateModels) {
@@ -959,10 +1004,138 @@ ${stepOutput.objectionAnalysis ? `- رفع اشکال یا نگرانی کارب
   };
 }
 
+export interface GroupMultiLeadBatchInput {
+  leads: Array<{
+    senderId: string;
+    senderFirstName: string;
+    senderUsername: string; // must have telegram username
+    userMessageText: string;
+    userMessageId: number;
+    category?: string;
+  }>;
+  groupId: string;
+  groupTitle: string;
+  campaign: ProductCampaign;
+  supportHandle?: string;
+  anonymousInstructions?: any;
+}
+
+export interface GroupMultiLeadBatchResult {
+  replyText: string;
+  mentionedUsernames: string[];
+  replyToMessageId: number;
+  leadCount: number;
+  usedAi: boolean;
+}
+
+/**
+ * Consolidates multiple identified leads in the same group into a single high-impact,
+ * professional and human reply that addresses their collective and specific needs
+ * while tagging their @usernames.
+ */
+export async function processGroupMultiLeadBatchTurn(
+  input: GroupMultiLeadBatchInput
+): Promise<GroupMultiLeadBatchResult> {
+  const { leads, groupId, groupTitle, campaign, supportHandle, anonymousInstructions } = input;
+  const rawSupport = (supportHandle && supportHandle !== 'در عکس بالا')
+    ? supportHandle
+    : (campaign?.contactHandle && campaign.contactHandle !== 'در عکس بالا')
+      ? campaign.contactHandle
+      : '@Nova_vpn10';
+  const displayHandle = rawSupport.startsWith('@') ? rawSupport : `@${rawSupport}`;
+
+  // Filter out any users without a valid username and cap at 10 users as requested
+  const validLeads = (leads || [])
+    .filter(l => Boolean(l.senderUsername && String(l.senderUsername).trim()))
+    .slice(0, 10);
+
+  if (validLeads.length === 0) {
+    return {
+      replyText: '',
+      mentionedUsernames: [],
+      replyToMessageId: leads?.[0]?.userMessageId || 0,
+      leadCount: 0,
+      usedAi: false,
+    };
+  }
+
+  const mentionsList = validLeads.map(l => `@${String(l.senderUsername).replace(/^@+/, '')}`);
+  const mentionsHeader = mentionsList.join(' ');
+  const latestMessageId = validLeads[validLeads.length - 1].userMessageId;
+
+  // High-converting deterministic fallback text
+  let finalReply = `سلام بچه‌ها ${mentionsHeader} در مورد قطعی اینترنت و وی‌پی‌ان که سوال داشتید، با این وضعیت اختلالات اپراتورها فقط کانفیگ‌های اختصاصی v2ray بدون قطعی جواب میده. من خودم مدتیه دارم از نوا استفاده می‌کنم رو همراه اول و ایرانسل واقعاً ثابته، قبل خرید هم تست رایگان میدن رو خط خودتون چک کنید؛ به آیدی پشتیبانی پیام بدید براتون بفرستن: ${displayHandle}`;
+  let usedAi = false;
+
+  const ai = getGenAiClient();
+  if (ai && process.env.GEMINI_API_KEY) {
+    const leadsSummary = validLeads
+      .map((l, idx) => `${idx + 1}. @${String(l.senderUsername).replace(/^@+/, '')} (${l.senderFirstName || 'کاربر'}): "${l.userMessageText}"`)
+      .join('\n');
+
+    const multiPrompt = `شما به عنوان یک کاربر عادی، مطلع و مشتری کاملاً راضی و باتجربه سرویس اختصاصی ${campaign.title || 'نوا وی پی ان'} در گروه تلگرامی «${groupTitle}» هستید.
+چند نفر از اعضای گروه همگی در مورد مشکلات فیلترینگ، قطعی اینترنت، پینگ بازی، یوتیوب، اینستاگرام یا نیاز به وی‌پی‌ان خوب پیام داده‌اند:
+
+لیست کاربران شناسایی‌شده و پیام‌هایشان:
+${leadsSummary}
+
+هدف استراتژیک و حیاتی شما:
+به جای پاسخ‌های جداگانه، یک پاسخ جمع‌وجور، فوق‌العاده صمیمی، دلسوزانه و طبیعی (به زبان محاوره‌ای تهرانی) بنویسید که در یک پیام واحد، نیاز و سوالات همه این دوستان را پوشش دهد و آن‌ها را راهنمایی کند.
+در ابتدای پیام حتماً شناسه همه این کاربران منشن شود: ${mentionsHeader}
+
+دستورالعمل‌های نگارش:
+۱. در ابتدای پیام این منشن‌ها دقیقاً درج شوند: ${mentionsHeader}
+۲. خیلی خودمانی، دلسوزانه و تجربی توضیح دهید که با وضعیت فعلی اختلالات اپراتورها (همراه اول/ایرانسل/مخابرات) سرورهای اختصاصی با پینگ پایین کار می‌کنند.
+۳. تجربه واقعی و رضایت خودتان از ${campaign.title || 'نوا وی پی ان'} را مطرح کنید.
+۴. پیشنهاد دهید که قبل از هر چیز به آیدی پشتیبانی (${displayHandle}) پیام بدهند تا اکانت تست رایگان بگیرند و خودشان روی خطشان چک کنند.
+۵. لحن: کاملاً عامیانه، طبیعی، بدون لحن رباتی یا تبلیغات شرکتی، بدون نقطه یا گیومه اضافی.
+۶. طول متن: مناسب برای فضای چت تلگرام (حدود ۲۵ الی ۴۰ کلمه).
+۷. خروجی فقط و فقط متن نهایی پیام بدون هیچ پیشوند یا توضیح اضافه باشد.`;
+
+    const candidateModels = getAdaptiveCandidateModels();
+    for (const modelName of candidateModels) {
+      try {
+        const timeoutMs = GEMINI_MODEL_METADATA[modelName]?.timeoutMs || 5500;
+        const apiPromise = ai.models.generateContent({
+          model: modelName,
+          contents: multiPrompt,
+          config: { temperature: 0.72 },
+        });
+        const res: any = await runWithTimeout(apiPromise, timeoutMs, 'GEMINI_TIMEOUT');
+        const text = (res?.text || '').trim();
+        if (text && text.length >= 15) {
+          recordGeminiSuccess(modelName);
+          let cleaned = cleanTelegramChatText(text);
+          // Guarantee mentions presence
+          if (!cleaned.includes(mentionsList[0])) {
+            cleaned = `${mentionsHeader} ${cleaned}`;
+          }
+          if (!cleaned.includes(displayHandle)) {
+            cleaned = `${cleaned} (آیدی تست: ${displayHandle})`;
+          }
+          finalReply = cleaned;
+          usedAi = true;
+          break;
+        }
+      } catch (gemErr) {
+        // Try next model if any
+      }
+    }
+  }
+
+  return {
+    replyText: finalReply,
+    mentionedUsernames: mentionsList,
+    replyToMessageId: latestMessageId,
+    leadCount: validLeads.length,
+    usedAi,
+  };
+}
+
 /**
  * Intelligent AI-Powered Human Group Conversation Reply
- * Generates ultra-short, natural, human responses (3-7 words) to group member replies,
- * actively chatting about VPN, answering questions, and encouraging test/purchase via nova_vpn10.
+ * Generates natural, human responses to group member replies,
+ * actively chatting about VPN, answering questions, and encouraging test/purchase via support handle.
  */
 export async function generateGeminiGroupConversationReply(
   userMessageText: string,
@@ -982,7 +1155,9 @@ export async function generateGeminiGroupConversationReply(
     };
   }
 
-  const contact = 'nova_vpn10';
+  const rawHandle = (campaign?.contactHandle && campaign.contactHandle !== 'در عکس بالا') ? campaign.contactHandle : '@Nova_vpn10';
+  const displayHandle = rawHandle.startsWith('@') ? rawHandle : `@${rawHandle}`;
+
   const historyLines = (conversationHistory || [])
     .slice(-5)
     .map(h => `${h.role === 'user' ? 'کاربر' : 'شما'}: ${h.text}`)
@@ -997,27 +1172,29 @@ export async function generateGeminiGroupConversationReply(
 یکی از کاربران در گروه به پیام قبلی شما ریپلای زده و با شما گفتگو می‌کند.
 پیام قبلی شما در گروه: "${repliedBotMessage || 'پیشنهاد وی‌پی‌ان'}"
 پیام جدید کاربر در گروه: "${userMessageText}"
-${historyLines ? `تاریخچه گفتگوی اخیر در این گروه:\n${historyLines}\n` : ''}
-اطلاعات سرویس برای پاسخگویی به سوالات احتمالی:
+${historyLines ? `تاریخچه گفتگوی اخیر با این کاربر در این گروه:\n${historyLines}\n` : ''}
+اطلاعات سرویس برای پاسخگویی به سوالات و متقاعدسازی:
 - نام سرویس: ${campaign.title || 'نوا وی پی ان'}
-- قیمت: تک‌کاربره ۵۹ تومن، دوکاربره ۸۹ تومن (یا ${campaign.price})
-- اکانت تست رایگان و خرید: پیام به آیدی تلگرام ${contact} (حتماً با زیرخط و بدون علامت @)
+- تعرفه: تک‌کاربره ۵۹ تومن، دوکاربره ۸۹ تومن (یا ${campaign.price})
+- اکانت تست رایگان و پشتیبانی: آیدی تلگرام ${displayHandle}
 - کیفیت: بدون قطعی، پینگ عالی برای بازی و وبگردی، تضمین کارکرد روی همراه اول، ایرانسل و وای‌فای
 
-قوانین حیاتی (دقیقاً بر اساس سبک چت فوق‌کوتاه و انسانی تلگرام):
-۱. قانون طلایی کوتاهی: پاسخ شما حتماً و همیشه بسیار کوتاه و مختصر باشد (حداکثر ۳ الی ۷ یا ۸ کلمه!). از نوشتن جملات طولانی اکیداً خودداری کنید.
-۲. کاملاً عامیانه، خودمانی، دخترانه یا دوستانه و بدون اصطلاحات کتابی یا رسمی.
-۳. عدم استفاده از علائم نگارشی: در چت تلگرام هرگز از نقطه در انتهای پیام (.)، علامت تعجب (!)، ویرگول (،)، دونقطه (:) و گیومه استفاده نکنید چون مشخصه ربات است. فقط در صورت سوال از یک علامت ؟ استفاده کنید.
-۴. خط قرمز انسانی: هرگز نگویید هوش مصنوعی یا ربات هستید. شما یک هم‌گروهی واقعی هستید که از این سرویس راضی است و دارد با گوشی چت می‌کند.
-۵. هدایت هوشمند و نرم:
-   - اگر قیمت پرسید: مثلاً «تک کاربره ۵۹ دو کاربره ۸۹ تومنه»
-   - اگر از کیفیت، سرعت، پینگ یا قطعی پرسید: مثلاً «من خودم دارم اصلا قطعی نداره عالیه»
-   - اگر درباره اپراتورها پرسید: مثلاً «اره رو همراه اول و ایرانسل جفتش جوابه»
-   - اگر تست خواست یا گفت چطور بگیرم: مثلاً «به ${contact} پیام بده تست رایگان میده»
-   - اگر سلام یا احوال‌پرسی کرد: مثلاً «سلام قربانت خوبی چه خبر»
-   - اگر تشکر کرد: مثلاً «فدات عزیزم کاری داشتی بگو»
-   - اگر گفت نمی‌خوام یا گرونه: اصلاً اصرار نکن و بگو «باشه گلم هر جور راحتی»
-۶. خروجی فقط و فقط متن پیام بدون هیچ پیشوند یا علامتی باشد.${userPersonaPrompt}`;
+قوانین حیاتی (رعایت ۱۰۰٪ الزامی):
+۱. پاسخگویی هوشمند و منطقی: حتی اگر پیام کاربر هیچ کلیدواژه‌ای نداشته باشد (مثلاً «چنده؟»، «واقعا؟»، «چی هست؟»، «از کجا؟»)، بر اساس گفتگوهای قبلی به او پاسخ دهید و او را قانع کنید.
+۲. معرفی راهکار و تست رایگان: کاربر را به سمت دریافت تست رایگان از آیدی ${displayHandle} هدایت کنید تا خودش کیفیت را تست کند.
+۳. هدایت هوشمند و متقاعدسازی:
+   - اگر قیمت پرسید: تعرفه را بگو و اضافه کن که به ${displayHandle} پیام بده اول تست رایگان بگیر چک کن.
+   - اگر پرسید چی هست یا چیه: توضیح بده کانفیگ اختصاصی v2ray بدون قطعیه و بگو به پشتیبانی ${displayHandle} پیام بده تست فعال کنه.
+   - اگر از کیفیت، سرعت، پینگ یا قطعی پرسید: با اطمینان بگو خودم دارم ثابته و اول از ${displayHandle} تست رایگان بگیر خودت رو خطت ببین.
+   - اگر درباره اپراتورها پرسید: بگو رو همراه اول و ایرانسل سرور مجزا داره.
+   - اگر تست خواست یا گفت چطور بگیرم: بگو به آیدی ${displayHandle} پیام بده سریع تست رایگان میده.
+   - اگر سلام یا احوال‌پرسی کرد: صمیمی و با محبت جواب بده.
+   - اگر تشکر کرد: بگو «فدات عزیزم کاری داشتی بگو».
+   - اگر گفت نمی‌خوام یا رد کرد: اصرار نکن («باشه عزیزم هر جور راحتی»).
+۴. طول پیام: ۱ تا ۲ جمله محاوره‌ای، روان و طبیعی (حدود ۸ الی ۲۲ کلمه).
+۵. بدون علائم نگارشی سنگین مانند نقطه در انتها (.) یا گیومه.
+۶. خط قرمز انسانی: هرگز نگویید هوش مصنوعی یا ربات هستید. شما یک هم‌گروهی صمیمی هستید.
+۷. خروجی فقط و فقط متن پیام بدون هیچ پیشوند یا علامتی باشد.${userPersonaPrompt}`;
 
   const candidateModels = getAdaptiveCandidateModels();
   for (const modelName of candidateModels) {
